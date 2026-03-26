@@ -1,0 +1,29 @@
+{
+  "name": "familyos",
+  "version": "1.0.0",
+  "description": "FamilyOS - AI-Powered Family Command Center",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "concurrently \"nodemon server/index.js\" \"cd client && npm start\"",
+    "server": "nodemon server/index.js",
+    "client": "cd client && npm start",
+    "setup": "npm install && cd client && npm install",
+    "seed": "node database/seed.js",
+    "build": "cd client && npm run build"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "better-sqlite3": "^9.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.1",
+    "express": "^4.18.2",
+    "express-rate-limit": "^7.1.5",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^1.4.5-lts.1",
+    "uuid": "^9.0.0"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "nodemon": "^3.0.3"
+  }
+}
