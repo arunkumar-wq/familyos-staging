@@ -1,0 +1,2 @@
+export const fmtINR=n=>new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR',maximumFractionDigits:0}).format(n);
+export const fmtK=n=>{const v=Math.abs(n==null?0:n);if(v>=10000000)return('₹'+(v
