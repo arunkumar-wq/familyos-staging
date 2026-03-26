@@ -1,0 +1,10 @@
+#!/bin/bash
+echo "🚀 FamilyOS Setup"
+echo "=================="
+npm run setup && echo "✅ Dependencies installed"
+cp .env.example .env && echo "✅ .env created"
+npm run seed && echo "✅ Database seeded"
+echo ""
+echo "🎉 Setup complete! Run: npm run dev"
+echo "   Open: http://localhost:3000"
+echo "   Login: arun@familyos.ai / password123"
