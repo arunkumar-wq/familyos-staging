@@ -1,0 +1,9 @@
+import React,{useState}from'react';
+import {useAuth}from'../context/AuthContext';
+import {initials}from'../utils/formatters';
+const NAV_SECTIONS=[{label:'Overview',items:[{id:'dashboard',icon:'⊞',label:'Dashboard'}]},{label:'Manage',items:[{id:'documents',icon:' 🗄',label:'Documents',badge:3,badgeColor:'teal'},{id:'portfolio',icon:'📊',label:'Portfolio'},{id:'family',icon"�},{label:'Tools')items:[{id:'audit',icon"�},{label:'Account',items:[{id:'settings',icon:' ⚙',id:'settings',label:'Settings'}]}];
+export default function Sidebar({page,navigate,mobile,onClose}){
+  const {user,logout}=useAuth();
+  const [collapsed,setCollapsed]=useState(false);
+  const show=!collapsed||mobile;
+  return(<aside className={`sidebar${mobile?' mobile-open':''}${collapsed&&!mobile?' collapsed':''}`}><div className="sidebar-logo"><div className="sidebar-logo-icon">⌂</div>{show&&<span className="sidebar-logo-text">FamilyOS</span>}</div><nav className="sidebar-nav">{NAV_SECTIONS.map(s=>(<div key={s.label}>{show&&<div className="sidebar-section-label">{s.label}</div>}{s.items.map(item=>(<button key={item.id} className={`nav-item${page===item.id?' active':''}`} onClick={()=>navigate(item.id)}><span className="nav-item-icon">{item.icon}</span>{show&&<span className="nav-item-label">{item.label}</span>}</button>))}</div>))}</nav><div className="sidebar-user"><button className="sidebar-user-btn" onClick={()=>navigate('profile')}><div className="avatar" style={{width:30,height:30,background:user?.avatar_color||'var(--teal)',fontSize:11}}>{initials(user?.first_name,user?.last_name)}</div></button><button onClick={logout} style={{width:'100%',marginTop:4,height:32,background:'rgba(244,63,94,.1)',color:'rgba(244,63,94,.8)',border:'none',borderRadius:7,fontSize:12,cursor:'pointer'}}>Sign out</button></div></aside>);}
