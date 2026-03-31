@@ -14,7 +14,7 @@ export default function AuditPage() {
   }, []);
 
   const familyScore = audit.length ? Math.round(audit.reduce((s, m) => s + m.score, 0) / audit.length) : 0;
-  const scoreColor = s => s >= 80 ? 'var(--teal)' : s >= 60 ? 'var(--amber)' : 'var(--rose)';
+  const scoreColor = s => s >= 80 ? 'var(--teal)' : s >= 60 ? 'var(--amber)' : 'var(--red)';
   const dash = 2 * Math.PI * 52;
   const offset = dash * (1 - familyScore / 100);
 
@@ -63,7 +63,7 @@ export default function AuditPage() {
                 [audit.filter(m => m.score >= 80).length, 'Complete', 'green'],
               ].map(([v, l, c]) => (
                 <div key={l} style={{ textAlign: 'center', padding: 12, background: `var(--${c}-bg)`, borderRadius: 10 }}>
-                  <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 22, color: `var(--${c})` }}>{v}</div>
+                  <div style={{ fontFamily: "'DM Serif Display', serif", fontSize: 22, color: `var(--${c})` }}>{v}</div>
                   <div style={{ fontSize: 11, color: 'var(--txt2)' }}>{l}</div>
                 </div>
               ))}
