@@ -1,208 +1,113 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { PageHeader, Badge } from '../components/UI';
-import api from '../utils/api';
+import { PageHeader } from '../components/UI';
+
+const TABS = ['Profile','Security','Notifications','Family','Billing'];
 
 export default function SettingsPage({ navigate }) {
-  const { user, family } = useAuth();
-  const [tab, setTab] = useState('profile');
-  const [pwForm, setPwForm] = useState({ currentPassword: '', newPassword: '', confirm: '' });
-  const [pwMsg, setPwMsg] = useState('');
-  const [notifs, setNotifs] = useState({
-    docExpiry: true, aiAutoFile: true, portfolio: true, familyAccess: false, weeklyDigest: true,
-  });
+  const { user, logout } = useAuth();
+  const [tab, setTab] = useState('Profile');
+  const [saved, setSaved] = useState(false);
 
-  const TABS = [['profile','👤 Profile'],['security','🔒 Security'],['notifications','🔔 Notifications'],['integrations','🔗 Integrations'],['billing','💳 Billing']];
-
-  const changePassword = async () => {
-    if (pwForm.newPassword !== pwForm.confirm) { setPwMsg('Passwords do not match.'); return; }
-    try {
-      await api.put('/auth/password', { currentPassword: pwForm.currentPassword, newPassword: pwForm.newPassword });
-      setPwMsg('✅ Password updated successfully.');
-      setPwForm({ currentPassword: '', newPassword: '', confirm: '' });
-    } catch (e) {
-      setPwMsg('❌ ' + (e.response?.data?.error || 'Error updating password.'));
-    }
-  };
+  const save = () => { setSaved(true); setTimeout(() => setSaved(false), 2500); };
 
   return (
-    <div className="page-inner" style={{ maxWidth: 900 }}>
-      <PageHeader title="Settings" sub="Account, security, notifications, and integrations" />
-
-      <div style={{ display: 'grid', gridTemplateColumns: '190px 1fr', gap: 24 }}>
-        {/* Tab list */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          {TABS.map(([id, label]) => (
-            <button key={id} className={`settings-tab${tab === id ? ' active' : ''}`} onClick={() => setTab(id)}>{label}</button>
+    <div className="page-inner">
+      <PageHeader title="Settings" sub="Manage your account and preferences" />
+      <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: 24 }}>
+        <div className="card" style={{ padding: 12, alignSelf: 'start' }}>
+          {TABS.map(t => (
+            <button key={t} className={'settings-tab' + (tab === t ? ' active' : '')} onClick={() => setTab(t)}>{t}</button>
           ))}
+          <div className="divider" />
+          <button className="settings-tab" onClick={logout} style={{ color: 'var(--red)' }}>Sign Out</button>
         </div>
-
-        {/* Tab content */}
         <div>
-          {/* PROFILE */}
-          {tab === 'profile' && (
-            <div>
-              <div className="card" style={{ padding: 24, marginBottom: 16 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--txt2)', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 16 }}>Personal Info</div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20 }}>
-                  <div className="avatar" style={{ width: 64, height: 64, background: user?.avatar_color || 'var(--navy)', fontSize: 22 }}>
-                    {(user?.first_name?.[0] || '') + (user?.last_name?.[0] || '')}
-                  </div>
-                  <button className="btn btn-outline btn-sm">Change photo</button>
-                </div>
-                <div className="form-grid-2">
-                  {[['First Name', user?.first_name], ['Last Name', user?.last_name], ['Email', user?.email], ['Phone', user?.phone || '']].map(([l, v]) => (
-                    <div key={l} className="form-group">
-                      <label className="form-label">{l}</label>
-                      <input className="form-input" defaultValue={v || ''} />
-                    </div>
-                  ))}
-                </div>
-                <button className="btn btn-primary" onClick={() => navigate('profile')}>Edit Full Profile →</button>
-              </div>
-              <div className="card" style={{ padding: 24 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--txt2)', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 14 }}>Subscription</div>
-                <div style={{ background: 'var(--navy)', borderRadius: 12, padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: '#fff' }}>
-                  <div>
-                    <div style={{ fontFamily: "'DM Serif Display', serif", fontSize: 18 }}>{family?.plan?.toUpperCase() || 'Pro'} Plan</div>
-                    <div style={{ fontSize: 12, color: 'rgba(255,255,255,.5)', marginTop: 3 }}>₹1,299/month · Renews Apr 1, 2025</div>
-                  </div>
-                  <Badge color="teal">Active</Badge>
-                </div>
-              </div>
+          {saved && (
+            <div style={{ background: 'var(--green-bg)', border: '1px solid var(--green-border)', borderRadius: 'var(--r-md)', padding: '10px 16px', marginBottom: 16, color: 'var(--green)', fontSize: 13 }}>
+              Settings saved successfully.
             </div>
           )}
-
-          {/* SECURITY */}
-          {tab === 'security' && (
-            <div className="card" style={{ padding: 24 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--txt2)', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 16 }}>Change Password</div>
-              {[['Current Password','currentPassword'],['New Password','newPassword'],['Confirm New Password','confirm']].map(([l,k]) => (
-                <div key={k} className="form-group">
-                  <label className="form-label">{l}</label>
-                  <input type="password" className="form-input" value={pwForm[k]} onChange={e => setPwForm(f => ({ ...f, [k]: e.target.value }))} placeholder="••••••••" />
+          {tab === 'Profile' && (
+            <div className="card card-p">
+              <div className="section-label" style={{ marginBottom: 16 }}>Profile Information</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginBottom: 24 }}>
+                <div className="avatar" style={{ width: 72, height: 72, background: user?.avatar_color || 'var(--brand)', fontSize: 24 }}>
+                  {(user?.first_name?.[0] || '') + (user?.last_name?.[0] || '')}
+                </div>
+                <div>
+                  <div style={{ fontSize: 18, fontWeight: 700 }}>{user?.first_name} {user?.last_name}</div>
+                  <div style={{ fontSize: 13, color: 'var(--txt3)', marginTop: 2 }}>{user?.email}</div>
+                  <button className="btn btn-outline btn-sm" style={{ marginTop: 8 }} onClick={() => navigate('profile')}>Edit Profile</button>
+                </div>
+              </div>
+              <div className="form-grid-2">
+                {[['First Name', user?.first_name], ['Last Name', user?.last_name], ['Email', user?.email], ['Phone', user?.phone || '--'], ['Role', user?.role], ['Member Since', '2024']].map(([l, v]) => (
+                  <div key={l} className="form-group">
+                    <label className="form-label">{l}</label>
+                    <input className="form-input" defaultValue={v || ''} readOnly style={{ background: 'var(--surface2)', cursor: 'not-allowed' }} />
+                  </div>
+                ))}
+              </div>
+              <button className="btn btn-primary" onClick={() => navigate('profile')}>Edit Profile</button>
+            </div>
+          )}
+          {tab === 'Security' && (
+            <div className="card card-p">
+              <div className="section-label" style={{ marginBottom: 16 }}>Security Settings</div>
+              {[['Password', 'Change your account password', 'Change Password'],
+                ['Two-Factor Auth', 'Add an extra layer of security', 'Enable 2FA'],
+                ['Active Sessions', 'Manage devices with access', 'View Sessions']].map(([t, d, btn]) => (
+                <div key={t} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 0', borderBottom: '1px solid var(--border)' }}>
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 600 }}>{t}</div>
+                    <div style={{ fontSize: 12, color: 'var(--txt3)', marginTop: 2 }}>{d}</div>
+                  </div>
+                  <button className="btn btn-outline btn-sm">{btn}</button>
                 </div>
               ))}
-              {pwMsg && <div style={{ fontSize: 13, marginBottom: 12, color: pwMsg.startsWith('✅') ? 'var(--teal)' : 'var(--red)' }}>{pwMsg}</div>}
-              <button className="btn btn-primary" onClick={changePassword}>Update Password</button>
-
-              <div style={{ borderTop: '1px solid var(--border)', marginTop: 24, paddingTop: 20 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--txt2)', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 14 }}>Two-Factor Authentication</div>
-                {[['Authenticator App','Google Auth or Authy','green'],['SMS Backup',user?.phone || '+91 XXXXX XXXXX','amber']].map(([t,s,c]) => (
-                  <div key={t} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
-                    <div><div style={{ fontSize: 14, fontWeight: 600 }}>{t}</div><div style={{ fontSize: 12, color: 'var(--txt2)' }}>{s}</div></div>
-                    <Badge color={c}>{c === 'green' ? '✓ Enabled' : 'Set up'}</Badge>
-                  </div>
-                ))}
-              </div>
-
-              <div style={{ borderTop: '1px solid var(--border)', marginTop: 20, paddingTop: 20 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--txt2)', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 14 }}>Active Sessions</div>
-                {[['Chrome · MacOS','Mumbai, IN · Current session'],['FamilyOS iOS App','Last active 2h ago · Noida, IN']].map(([d,s]) => (
-                  <div key={d} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
-                    <div><div style={{ fontSize: 14, fontWeight: 500 }}>{d}</div><div style={{ fontSize: 12, color: 'var(--txt3)' }}>{s}</div></div>
-                    <button className="btn btn-outline btn-sm">Revoke</button>
-                  </div>
-                ))}
-              </div>
             </div>
           )}
-
-          {/* NOTIFICATIONS */}
-          {tab === 'notifications' && (
-            <div className="card" style={{ padding: 24 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--txt2)', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 16 }}>Notification Preferences</div>
-              {[
-                ['docExpiry','Document Expiry Reminders','90, 30, 14 days before expiry'],
-                ['aiAutoFile','AI Auto-filing Confirmations','When AI files a document for you'],
-                ['portfolio','Portfolio Alerts','Market moves, rebalancing, milestones'],
-                ['familyAccess','Family Access Events','When a member uploads or views docs'],
-                ['weeklyDigest','Weekly Digest Email','Sunday morning summary of the week'],
-              ].map(([k,t,s]) => (
-                <div key={k} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 0', borderBottom: '1px solid var(--border)' }}>
+          {tab === 'Notifications' && (
+            <div className="card card-p">
+              <div className="section-label" style={{ marginBottom: 16 }}>Notification Preferences</div>
+              {[['Document Expiry Alerts', 'Get notified 90, 30, and 7 days before documents expire'],
+                ['AI Insight Alerts', 'Receive proactive AI recommendations'],
+                ['Portfolio Changes', 'Track significant portfolio movements'],
+                ['Family Activity', 'Know when family members upload or edit documents'],
+                ['Email Digest', 'Weekly summary of your FamilyOS activity']].map(([t, d]) => (
+                <div key={t} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 0', borderBottom: '1px solid var(--border)' }}>
                   <div>
                     <div style={{ fontSize: 14, fontWeight: 500 }}>{t}</div>
-                    <div style={{ fontSize: 12, color: 'var(--txt2)' }}>{s}</div>
+                    <div style={{ fontSize: 12, color: 'var(--txt3)', marginTop: 2 }}>{d}</div>
                   </div>
-                  <label style={{ position: 'relative', display: 'inline-block', width: 44, height: 24, flexShrink: 0, cursor: 'pointer' }}>
-                    <input type="checkbox" checked={notifs[k]} onChange={e => setNotifs(n => ({ ...n, [k]: e.target.checked }))} style={{ opacity: 0, width: 0, height: 0 }} />
-                    <span style={{ position: 'absolute', inset: 0, background: notifs[k] ? 'var(--teal)' : 'var(--border2)', borderRadius: 24, transition: '.2s' }}>
-                      <span style={{ position: 'absolute', width: 18, height: 18, background: '#fff', borderRadius: '50%', top: 3, left: notifs[k] ? 23 : 3, transition: '.2s', boxShadow: '0 1px 4px rgba(0,0,0,.2)' }} />
-                    </span>
-                  </label>
+                  <div style={{ width: 44, height: 24, background: 'var(--brand)', borderRadius: 12, position: 'relative', cursor: 'pointer' }}>
+                    <div style={{ width: 18, height: 18, borderRadius: '50%', background: '#fff', position: 'absolute', top: 3, right: 3 }} />
+                  </div>
                 </div>
               ))}
-              <button className="btn btn-primary" style={{ marginTop: 16 }}>Save Preferences</button>
+              <button className="btn btn-primary" style={{ marginTop: 20 }} onClick={save}>Save Preferences</button>
             </div>
           )}
-
-          {/* INTEGRATIONS */}
-          {tab === 'integrations' && (
-            <div className="card" style={{ padding: 24 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--txt2)', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 16 }}>Connected Accounts</div>
-              {[
-                ['🏦','Zerodha','Portfolio sync · Last synced 1h ago','green'],
-                ['🏦','SBI NetBanking','FD & savings sync · Active','green'],
-                ['📧','Gmail','Auto-detect documents from email','amber'],
-                ['☁','Google Drive','Import existing documents','amber'],
-                ['📱','DigiLocker','Official govt document import','rose'],
-              ].map(([ic,name,sub,status]) => (
-                <div key={name} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 0', borderBottom: '1px solid var(--border)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <div style={{ width: 36, height: 36, borderRadius: 8, background: status === 'green' ? 'var(--teal-bg)' : status === 'amber' ? 'var(--amber-bg)' : 'var(--rose-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>{ic}</div>
-                    <div><div style={{ fontSize: 14, fontWeight: 600 }}>{name}</div><div style={{ fontSize: 12, color: 'var(--txt2)' }}>{sub}</div></div>
-                  </div>
-                  {status === 'green' ? <Badge color="green">✓ Connected</Badge> : <button className="btn btn-outline btn-sm">Connect</button>}
-                </div>
-              ))}
+          {tab === 'Family' && (
+            <div className="card card-p">
+              <div className="section-label" style={{ marginBottom: 16 }}>Family Settings</div>
+              <p style={{ fontSize: 14, color: 'var(--txt2)', marginBottom: 20 }}>Manage your family members, permissions and shared access.</p>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button className="btn btn-primary" onClick={() => navigate('family')}>Manage Family</button>
+                <button className="btn btn-outline" onClick={() => navigate('add-member')}>Add Member</button>
+              </div>
             </div>
           )}
-
-          {/* BILLING */}
-          {tab === 'billing' && (
-            <div>
-              <div className="card" style={{ padding: 24, marginBottom: 16 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--txt2)', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 16 }}>Choose Plan</div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                  <div style={{ padding: 20, background: 'var(--navy)', borderRadius: 14, color: '#fff' }}>
-                    <div style={{ fontFamily: "'DM Serif Display', serif", fontSize: 20, marginBottom: 4 }}>Pro Plan</div>
-                    <div style={{ fontSize: 30, fontWeight: 600, marginBottom: 10 }}>₹1,299<span style={{ fontSize: 14, fontWeight: 400, opacity: .6 }}>/mo</span></div>
-                    {['Unlimited documents','6 family members','AI auto-filing','Portfolio tracking','Priority support'].map(f => (
-                      <div key={f} style={{ fontSize: 12, color: 'rgba(255,255,255,.75)', marginBottom: 5 }}>✓ {f}</div>
-                    ))}
-                    <Badge color="teal" style={{ marginTop: 12 }}>Current Plan</Badge>
-                  </div>
-                  <div style={{ padding: 20, border: '1.5px dashed var(--border2)', borderRadius: 14 }}>
-                    <div style={{ fontFamily: "'DM Serif Display', serif", fontSize: 20, color: 'var(--navy)', marginBottom: 4 }}>Family Plan</div>
-                    <div style={{ fontSize: 30, fontWeight: 600, color: 'var(--navy)', marginBottom: 10 }}>₹2,499<span style={{ fontSize: 14, fontWeight: 400, color: 'var(--txt2)' }}>/mo</span></div>
-                    {['Everything in Pro','12 family members','Advisor access','Dedicated support','Custom branding'].map(f => (
-                      <div key={f} style={{ fontSize: 12, color: 'var(--txt2)', marginBottom: 5 }}>✓ {f}</div>
-                    ))}
-                    <button className="btn btn-primary btn-sm" style={{ marginTop: 12, width: '100%', justifyContent: 'center' }}>Upgrade →</button>
-                  </div>
-                </div>
+          {tab === 'Billing' && (
+            <div className="card card-p">
+              <div className="section-label" style={{ marginBottom: 16 }}>Billing and Plan</div>
+              <div style={{ background: 'var(--blue-bg)', border: '1px solid var(--blue-border)', borderRadius: 'var(--r-lg)', padding: 20, marginBottom: 20 }}>
+                <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--brand)', marginBottom: 4 }}>FamilyOS Pro</div>
+                <div style={{ fontSize: 13, color: 'var(--txt2)', marginBottom: 12 }}>Unlimited documents, AI insights, 10 family members</div>
+                <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--txt)' }}>Rs.999<span style={{ fontSize: 13, fontWeight: 400, color: 'var(--txt3)' }}>/month</span></div>
               </div>
-              <div className="card" style={{ padding: 24 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--txt2)', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 14 }}>Payment Method</div>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 14, border: '1px solid var(--border)', borderRadius: 8 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <div style={{ width: 44, height: 28, background: 'var(--navy)', borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 11, fontWeight: 700 }}>VISA</div>
-                    <span style={{ fontSize: 14 }}>Visa ending in 4242 · Expires 12/27</span>
-                  </div>
-                  <button className="btn btn-outline btn-sm">Update</button>
-                </div>
-                <div style={{ marginTop: 16 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--txt2)', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 10 }}>Recent Invoices</div>
-                  {[['Mar 2025','₹1,299','Paid'],['Feb 2025','₹1,299','Paid'],['Jan 2025','₹1,299','Paid']].map(([d,a,s]) => (
-                    <div key={d} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
-                      <span style={{ fontSize: 13 }}>{d}</span>
-                      <span style={{ fontSize: 13, fontWeight: 600 }}>{a}</span>
-                      <Badge color="green">{s}</Badge>
-                      <button className="btn btn-outline btn-sm">📥 PDF</button>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              <div style={{ fontSize: 13, color: 'var(--txt3)' }}>Next billing date: May 1, 2026</div>
             </div>
           )}
         </div>
