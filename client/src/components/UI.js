@@ -1,40 +1,41 @@
 import React from 'react';
 import { initials } from '../utils/formatters';
 
-/* ─── AVATAR ──────────────────────────────────────────────────────── */
-export function Avatar({ firstName, lastName, color = '#0f1f3d', size = 36 }) {
+export function Avatar({ firstName, lastName, color = '#1e3a5f', size = 36 }) {
   return (
-    <div
-      className="avatar"
-      style={{ width: size, height: size, background: color, fontSize: size * 0.32 }}
-    >
+    <div className="avatar" style={{ width: size, height: size, background: color, fontSize: size * 0.33 }}>
       {initials(firstName, lastName)}
     </div>
   );
 }
 
-/* ─── BADGE ───────────────────────────────────────────────────────── */
-export function Badge({ color = 'navy', children }) {
-  return <span className={`badge badge-${color}`}>{children}</span>;
+export function Badge({ color = 'navy', children, dot }) {
+  return <span className={`badge badge-${color}${dot ? ' badge-dot' : ''}`}>{children}</span>;
 }
 
-/* ─── STAT CARD ───────────────────────────────────────────────────── */
-export function StatCard({ icon, iconBg, label, value, sub, subUp }) {
+export function StatCard({ icon, iconBg, label, value, sub, subUp, subDown, accent }) {
   return (
-    <div className="card stat-card">
-      <div className="stat-card-icon" style={{ background: iconBg || 'rgba(15,31,61,.06)' }}>{icon}</div>
+    <div className={`card stat-card${accent ? ` card-${accent}` : ''}`}>
+      {icon && (
+        <div className="stat-card-icon-wrap" style={{ background: iconBg || 'var(--blue-light)', color: 'var(--blue)' }}>
+          {icon}
+        </div>
+      )}
       <div className="stat-card-label">{label}</div>
       <div className="stat-card-value">{value}</div>
-      {sub && <div className={`stat-card-sub${subUp ? ' up' : ''}`}>{subUp ? '▲' : '●'} {sub}</div>}
+      {sub && (
+        <div className={`stat-card-sub${subUp ? ' up' : subDown ? ' down' : ''}`}>
+          {subUp ? '➒' : subDown ? '➓' : ''} {sub}
+        </div>
+      )}
     </div>
   );
 }
 
-/* ─── PAGE HEADER ─────────────────────────────────────────────────── */
 export function PageHeader({ title, sub, children }) {
   return (
     <div className="page-header">
-      <div>
+      <div className="page-header-left">
         <h1>{title}</h1>
         {sub && <p>{sub}</p>}
       </div>
@@ -43,14 +44,13 @@ export function PageHeader({ title, sub, children }) {
   );
 }
 
-/* ─── MODAL ───────────────────────────────────────────────────────── */
 export function Modal({ title, onClose, children, footer, maxWidth = 560 }) {
   return (
     <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="modal" style={{ maxWidth }}>
         <div className="modal-header">
           <h3>{title}</h3>
-          <button className="modal-close" onClick={onClose}>✕</button>
+          <button className="modal-close" onClick={onClose}>Ǘ</button>
         </div>
         <div className="modal-body">{children}</div>
         {footer && <div className="modal-footer">{footer}</div>}
@@ -59,17 +59,15 @@ export function Modal({ title, onClose, children, footer, maxWidth = 560 }) {
   );
 }
 
-/* ─── LOADING ─────────────────────────────────────────────────────── */
 export function LoadingSpinner({ message = 'Loading…' }) {
   return (
     <div className="loading-screen">
       <div className="spinner" />
-      <p style={{ color: 'var(--txt3)', fontSize: 13 }}>{message}</p>
+      <p style={{ color: 'var(--txt3)', fontSize: 13 }}>{mssage}</p>
     </div>
   );
 }
 
-/* ─── EMPTY STATE ─────────────────────────────────────────────────── */
 export function EmptyState({ icon, title, sub }) {
   return (
     <div className="empty-state">
@@ -80,17 +78,7 @@ export function EmptyState({ icon, title, sub }) {
   );
 }
 
-/* ─── SECTION HEADER ──────────────────────────────────────────────── */
-export function SectionLabel({ children }) {
-  return (
-    <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--txt2)', textTransform: 'uppercase', letterSpacing: '.07em' }}>
-      {children}
-    </div>
-  );
-}
-
-/* ─── PROGRESS BAR ────────────────────────────────────────────────── */
-export function ProgressBar({ value, max = 100, color = 'var(--teal)' }) {
+export function ProgressBar({ value, max = 100, color = 'var(--blue)' }) {
   const pct = Math.min(100, Math.round((value / max) * 100));
   return (
     <div className="progress-track">
@@ -99,18 +87,15 @@ export function ProgressBar({ value, max = 100, color = 'var(--teal)' }) {
   );
 }
 
-/* ─── SELECT ──────────────────────────────────────────────────────── */
-export function Select({ value, onChange, options, style = {} }) {
+export function SectionLabel({ children }) {
+  return <div className="section-label">{children}</div>;
+}
+
+export function CardHeader({ title, action }) {
   return (
-    <select
-      className="form-select"
-      value={value}
-      onChange={e => onChange(e.target.value)}
-      style={{ height: 34, fontSize: 12, ...style }}
-    >
-      {options.map(o => (
-        <option key={o.value} value={o.value}>{o.label}</option>
-      ))}
-    </select>
+    <div className="card-header">
+      <span className="card-header-title">{title}</span>
+      {action}
+    </div>
   );
 }
