@@ -3,41 +3,63 @@ import { useAuth } from '../context/AuthContext';
 import { initials } from '../utils/formatters';
 
 const NAV_SECTIONS = [
-  { label: 'Overview', items: [
-    { id: 'dashboard', icon: 'grid', label: 'Dashboard' },
-  ]},
-  { label: 'Manage', items: [
-    { id: 'documents',  icon: 'folder', label: 'Documents',     badge: 3, badgeColor: 'blue' },
-    { id: 'portfolio',  icon: 'chart',  label: 'Portfolio' },
-    { id: 'family',     icon: 'family', label: 'Family' },
-    { id: 'insights',   icon: 'spark',  label: 'AI Insights',   badge: 5, badgeColor: 'amber' },
-  ]},
-  { label: 'Tools', items: [
-    { id: 'audit',         icon: 'shield', label: 'Vault Audit' },
-    { id: 'calendar',      icon: 'cal',    label: 'Calendar' },
-    { id: 'notifications', icon: 'bell',   label: 'Alerts',     badge: 2, badgeColor: 'blue' },
-  ]},
-  { label: 'Account', items: [
-    { id: 'settings', icon: 'gear', label: 'Settings' },
-  ]},
+  {
+    label: 'Overview',
+    items: [
+      { id: 'dashboard', label: 'Dashboard', icon: 'dashboard' },
+    ],
+  },
+  {
+    label: 'Manage',
+    items: [
+      { id: 'documents',  label: 'Documents',   icon: 'documents', badge: 3, badgeColor: 'blue' },
+      { id: 'portfolio',  label: 'Portfolio',   icon: 'portfolio' },
+      { id: 'family',     label: 'Family',      icon: 'family' },
+      { id: 'insights',   label: 'AI Insights', icon: 'insights', badge: 5, badgeColor: 'amber' },
+    ],
+  },
+  {
+    label: 'Tools',
+    items: [
+      { id: 'audit',         label: 'Vault Audit', icon: 'audit' },
+      { id: 'calendar',      label: 'Calendar',    icon: 'calendar' },
+      { id: 'notifications', label: 'Alerts',      icon: 'bell', badge: 2, badgeColor: 'blue' },
+    ],
+  },
+  {
+    label: 'Account',
+    items: [
+      { id: 'settings', label: 'Settings', icon: 'settings' },
+    ],
+  },
 ];
 
-const ICON_MAP = {
-  grid: 'M3 3h7v7H3V3zm0 11h7v7H3v-7zm11-11h7v7h-7V3zm0 11h7v7h-7v-7z',
-  folder: 'M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z',
-  chart: 'M18 20V10M12 20V4M6 20v-6',
-  family: 'M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75',
-  spark: 'M13 2L3 14h9l-1 8 10-12h-9l1-8z',
-  shield: 'M12 2l9 4v6c0 5.25-3.75 10.15-9 11.5C6.75 22.15 3 17.25 3 12V6l9-4z',
-  cal: 'M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2z',
-  bell: 'M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0',
-  gear: 'M12 15a3 3 0 100-6 3 3 0 000 6z M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z',
+const PATHS = {
+  dashboard: 'M3 3h7v7H3V3zm11 0h7v7h-7V3zM3 14h7v7H3v-7zm11 0h7v7h-7v-7z',
+  documents: 'M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8zM14 2v6h6M16 13H8m8 4H8m2-8H8',
+  portfolio: 'M18 20V10m-6 10V4M6 20v-6',
+  family: 'M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zm8 2a4 4 0 00-4 4v2h8v-2a4 4 0 00-4-4z',
+  insights: 'M13 2L3 14h9l-1 8 10-12h-9l1-8z',
+  audit: 'M12 2l9 4v6c0 5.25-3.75 10.15-9 11.5C6.75 22.15 3 17.25 3 12V6l9-4z',
+  calendar: 'M8 2v4m8-4v4M3 10h18M5 4h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2z',
+  bell: 'M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9m-4.27 13a2 2 0 01-3.46 0',
+  settings: 'M12 15a3 3 0 100-6 3 3 0 000 6zm7.07-1.54a7.08 7.08 0 00.07-1 6.76 6.76 0 00-.07-.93l2.02-1.58a.5.5 0 00.12-.63l-1.91-3.31a.5.5 0 00-.61-.22l-2.39.96a7.12 7.12 0 00-1.6-.93l-.36-2.54a.49.49 0 00-.49-.42h-3.82a.49.49 0 00-.49.42l-.36 2.54a7.28 7.28 0 00-1.61.93l-2.38-.96a.5.5 0 00-.61.22l-1.92 3.31a.49.49 0 00.12.63l2.03 1.58a7.32 7.32 0 000 1.86L2.08 15.12a.49.49 0 00-.12.63l1.92 3.31a.5.5 0 00.61.22l2.38-.96c.5.35 1.04.64 1.61.93l.36 2.54c.07.24.28.42.49.42h3.82c.22 0 .42-.18.49-.42l.36-2.54a7.07 7.07 0 001.6-.93l2.39.96a.5.5 0 00.61-.22l1.91-3.31a.49.49 0 00-.12-.63l-2.02-1.54z',
+  home: 'M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2zM9 22V12h6v10',
 };
 
-function NavIcon({ name }) {
+function SvgIcon({ name, size = 16 }) {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d={ICON_MAP[name] || ''} />
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d={PATHS[name] || PATHS.home} />
     </svg>
   );
 }
@@ -48,29 +70,43 @@ export default function Sidebar({ page, navigate, mobile, onClose }) {
   const show = !collapsed || mobile;
 
   return (
-    <aside className={`sidebar${mobile ? ' mobile-open' : ''}${collapsed && !mobile ? ' collapsed' : ''}`}>
+    <aside
+      className={`sidebar${mobile ? ' mobile-open' : ''}${collapsed && !mobile ? ' collapsed' : ''}`}
+    >
+      {/* Logo */}
       <div className="sidebar-logo">
         <div className="sidebar-logo-icon">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
-            <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
-            <polyline points="9 22 9 12 15 12 15 22" />
-          </svg>
+          <SvgIcon name="home" size={18} />
         </div>
         {show && <span className="sidebar-logo-text">FamilyOS</span>}
         {!mobile && (
-          <button className="sidebar-collapse-btn" onClick={() => setCollapsed(c => !c)} title="Toggle">
+          <button
+            className="sidebar-collapse-btn"
+            onClick={() => setCollapsed(c => !c)}
+            title="Toggle sidebar"
+          >
             {collapsed ? '>' : '<'}
           </button>
         )}
         {mobile && (
-          <button className="sidebar-collapse-btn" onClick={onClose} style={{ marginLeft: 'auto' }}>x</button>
+          <button
+            className="sidebar-collapse-btn"
+            onClick={onClose}
+            style={{ marginLeft: 'auto' }}
+            title="Close"
+          >
+            x
+          </button>
         )}
       </div>
 
+      {/* Navigation */}
       <nav className="sidebar-nav">
         {NAV_SECTIONS.map(section => (
           <div key={section.label}>
-            {show && <div className="sidebar-section-label">{section.label}</div>}
+            {show && (
+              <div className="sidebar-section-label">{section.label}</div>
+            )}
             {section.items.map(item => (
               <button
                 key={item.id}
@@ -79,12 +115,16 @@ export default function Sidebar({ page, navigate, mobile, onClose }) {
                 title={item.label}
                 style={collapsed && !mobile ? { justifyContent: 'center', padding: 0 } : {}}
               >
-                <span className="nav-item-icon"><NavIcon name={item.icon} /></span>
+                <span className="nav-item-icon">
+                  <SvgIcon name={item.icon} size={16} />
+                </span>
                 {show && (
                   <>
                     <span className="nav-item-label">{item.label}</span>
                     {item.badge && (
-                      <span className={`nav-badge nav-badge-${item.badgeColor}`}>{item.badge}</span>
+                      <span className={`nav-badge nav-badge-${item.badgeColor}`}>
+                        {item.badge}
+                      </span>
                     )}
                   </>
                 )}
@@ -94,20 +134,56 @@ export default function Sidebar({ page, navigate, mobile, onClose }) {
         ))}
       </nav>
 
+      {/* User */}
       <div className="sidebar-user">
-        <button className="sidebar-user-btn" onClick={() => navigate('profile')}>
-          <div className="avatar" style={{ width: 32, height: 32, background: user?.avatar_color || 'var(--blue)', fontSize: 11, flexShrink: 0 }}>
+        <button
+          className="sidebar-user-btn"
+          onClick={() => navigate('profile')}
+        >
+          <div
+            className="avatar"
+            style={{
+              width: 32,
+              height: 32,
+              background: user?.avatar_color || 'var(--blue)',
+              fontSize: 11,
+              flexShrink: 0,
+            }}
+          >
             {initials(user?.first_name, user?.last_name)}
           </div>
           {show && (
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div className="sidebar-user-name">{user?.first_name} {user?.last_name}</div>
-              <div className="sidebar-user-sub">{user?.role} &middot; Pro</div>
+              <div className="sidebar-user-name">
+                {user?.first_name} {user?.last_name}
+              </div>
+              <div className="sidebar-user-sub">
+                {user?.role} &middot; Pro
+              </div>
             </div>
+          )}
+          {show && (
+            <span style={{ color: 'rgba(255,255,255,.28)', fontSize: 11 }}>
+              &rsaquo;
+            </span>
           )}
         </button>
         {show && (
-          <button onClick={logout} style={{ width: '100%', marginTop: 4, height: 30, background: 'rgba(220,38,38,.12)', color: 'rgba(252,165,165,.9)', border: 'none', borderRadius: 6, fontSize: 12, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>
+          <button
+            onClick={logout}
+            style={{
+              width: '100%',
+              marginTop: 4,
+              height: 30,
+              background: 'rgba(220,38,38,.12)',
+              color: 'rgba(252,165,165,.9)',
+              border: 'none',
+              borderRadius: 6,
+              fontSize: 12,
+              cursor: 'pointer',
+              fontFamily: 'DM Sans, sans-serif',
+            }}
+          >
             Sign out
           </button>
         )}
