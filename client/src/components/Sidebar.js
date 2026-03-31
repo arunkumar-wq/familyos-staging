@@ -7,15 +7,15 @@ const NAV_SECTIONS = [
     { id: 'dashboard', icon: '⊞', label: 'Dashboard' },
   ]},
   { label: 'Manage', items: [
-    { id: 'documents', icon: '🗄', label: 'Documents', badge: 3, badgeColor: 'teal' },
+    { id: 'documents', icon: '👴', label: 'Documents', badge: 3, badgeColor: 'blue' },
     { id: 'portfolio', icon: '📊', label: 'Portfolio' },
-    { id: 'family',    icon: '👨‍👩‍👧‍👦', label: 'Family' },
+    { id: 'family',    icon: '👘‍👚', label: 'Family' },
     { id: 'insights',  icon: '✨', label: 'AI Insights', badge: 5, badgeColor: 'amber' },
   ]},
   { label: 'Tools', items: [
     { id: 'audit',         icon: '🛡',  label: 'Vault Audit' },
     { id: 'calendar',      icon: '📅', label: 'Calendar' },
-    { id: 'notifications', icon: '🔔', label: 'Notifications', badge: 2, badgeColor: 'teal' },
+    { id: 'notifications', icon: '🔔', label: 'Alerts', badge: 2, badgeColor: 'blue' },
   ]},
   { label: 'Account', items: [
     { id: 'settings', icon: '⚙', label: 'Settings' },
@@ -29,21 +29,19 @@ export default function Sidebar({ page, navigate, mobile, onClose }) {
 
   return (
     <aside className={`sidebar${mobile ? ' mobile-open' : ''}${collapsed && !mobile ? ' collapsed' : ''}`}>
-      {/* Logo */}
       <div className="sidebar-logo">
-        <div className="sidebar-logo-icon">⌂</div>
+        <div className="sidebar-logo-icon">🡐 
+        </div>
         {show && <span className="sidebar-logo-text">FamilyOS</span>}
         {!mobile && (
-          <button className="sidebar-collapse-btn" onClick={() => setCollapsed(c => !c)} title="Toggle sidebar">
+          <button className="sidebar-collapse-btn" onClick={() => setCollapsed(c => !c)} title="Toggle">
             {collapsed ? '→' : '☰'}
           </button>
         )}
-        {mobile && (
-          <button className="sidebar-collapse-btn" onClick={onClose} title="Close" style={{ marginLeft: 'auto' }}>✕</button>
-        )}
+        {mobile && <button className="sidebar-collapse-btn" onClick={onClose} style={{ marginLeft: 'auto' }}>
+</button>}
       </div>
 
-      {/* Nav */}
       <nav className="sidebar-nav">
         {NAV_SECTIONS.map(section => (
           <div key={section.label}>
@@ -54,15 +52,13 @@ export default function Sidebar({ page, navigate, mobile, onClose }) {
                 className={`nav-item${page === item.id ? ' active' : ''}`}
                 onClick={() => navigate(item.id)}
                 title={item.label}
-                style={collapsed && !mobile ? { justifyContent: 'center', paddingLeft: 0 } : {}}
+                style={collapsed && !mobile ? { justifyContent: 'center', padding: 0 } : {}}
               >
                 <span className="nav-item-icon">{item.icon}</span>
                 {show && (
                   <>
                     <span className="nav-item-label">{item.label}</span>
-                    {item.badge && (
-                      <span className={`nav-badge nav-badge-${item.badgeColor}`}>{item.badge}</span>
-                    )}
+                    {item.badge && <span className={`nav-badge nav-badge-${item.badgeColor}`}>{item.badge}</span>}
                   </>
                 )}
               </button>
@@ -71,13 +67,9 @@ export default function Sidebar({ page, navigate, mobile, onClose }) {
         ))}
       </nav>
 
-      {/* User footer */}
       <div className="sidebar-user">
         <button className="sidebar-user-btn" onClick={() => navigate('profile')}>
-          <div
-            className="avatar"
-            style={{ width: 30, height: 30, background: user?.avatar_color || 'var(--teal)', fontSize: 11 }}
-          >
+          <div className="avatar" style={{ width: 32, height: 32, background: user?.avatar_color || 'var(--blue)', fontSize: 11, flexShrink: 0 }}>
             {initials(user?.first_name, user?.last_name)}
           </div>
           {show && (
@@ -86,13 +78,10 @@ export default function Sidebar({ page, navigate, mobile, onClose }) {
               <div className="sidebar-user-sub">{user?.role} · Pro</div>
             </div>
           )}
-          {show && <span style={{ color: 'rgba(255,255,255,.3)', fontSize: 12 }}>⋯</span>}
+          {show && <span style={{ color: 'rgba(255,255,255,.28)', fontSize: 11 }}>⋯�/span>}
         </button>
         {show && (
-          <button
-            onClick={logout}
-            style={{ width: '100%', marginTop: 4, height: 32, background: 'rgba(244,63,94,.1)', color: 'rgba(244,63,94,.8)', border: 'none', borderRadius: 7, fontSize: 12, cursor: 'pointer', fontFamily: 'Plus Jakarta Sans, sans-serif' }}
-          >
+          <button onClick={logout} style={{ width: '100%', marginTop: 4, height: 30, background: 'rgba(220,38,38,.12)', color: 'rgba(252,165,165,.9)', border: 'none', borderRadius: 6, fontSize: 12, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>
             Sign out
           </button>
         )}
