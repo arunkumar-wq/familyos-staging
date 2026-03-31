@@ -86,7 +86,7 @@ export default function DocumentsPage({ navigate }) {
       <div className="card" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', padding: '14px 0', marginBottom: 20 }}>
         {[['📁', stats.total || 0, 'Total'],['✨', stats.aiAnalyzed || 0, 'AI Filed'],['⏰', (stats.byStatus || []).find(x=>x.status==='expiring')?.c || 0, 'Expiring'],['⚠', (stats.byStatus || []).find(x=>x.status==='review')?.c || 0, 'Review Needed']].map(([ic,v,l],i) => (
           <div key={l} style={{ textAlign: 'center', padding: '0 20px', borderRight: i < 3 ? '1px solid var(--border)' : 'none' }}>
-            <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 26, color: i===2?'var(--amber)':i===3?'var(--rose)':'var(--txt)' }}>{ic} {v}</div>
+            <div style={{ fontFamily: "'DM Serif Display', serif", fontSize: 26, color: i===2?'var(--amber)':i===3?'var(--red)':'var(--txt)' }}>{ic} {v}</div>
             <div style={{ fontSize: 11, color: 'var(--txt3)', marginTop: 2 }}>{l}</div>
           </div>
         ))}
@@ -114,34 +114,54 @@ export default function DocumentsPage({ navigate }) {
       ) : docs.length === 0 ? (
         <EmptyState icon="📄" title="No documents found" sub={search ? 'Try a different search' : 'Upload your first document to get started'} />
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 14 }}>
-          {docs.map(d => {
-            const ai = d.ai_summary ? JSON.parse(d.ai_summary) : null;
-            return (
-              <div key={d.id} className="card doc-card">
-                <div className="doc-icon" style={{ background: `var(--${catColor(d.category)}-bg)` }}>{catIcon(d.category)}</div>
-                <div className="doc-name" title={d.name}>{d.name}</div>
-                <div className="doc-meta">{d.member_name} · {d.file_size}</div>
-                <div className="doc-badges">
-                  <Badge color={statusColor(d.status)}>{statusLabel(d.status)}</Badge>
-                  {d.ai_analyzed ? <Badge color="violet">✨ AI Filed</Badge> : null}
-                  {d.expiry_date && <Badge color="amber">{fmtDate(d.expiry_date)}</Badge>}
-                </div>
-                {ai?.expiryDate && (
-                  <div style={{ marginTop: 8, fontSize: 11, color: 'var(--txt3)' }}>
-                    {ai.type} · Expires {fmtDate(ai.expiryDate)}
-                  </div>
-                )}
-                <div style={{ display: 'flex', gap: 6, marginTop: 12 }}>
-                  <button className="btn btn-outline btn-sm" style={{ flex: 1 }}>View</button>
-                  <button className="btn btn-outline btn-sm" onClick={() => deleteDoc(d.id)} style={{ color: 'var(--rose)', borderColor: 'var(--rose)' }}>✕</button>
-                </div>
-              </div>
-            );
-          })}
+        <div className="card" style={{ overflow: 'hidden' }}>
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Document</th>
+                <th>Member</th>
+                <th>Category</th>
+                <th>Status</th>
+                <th>Expiry</th>
+                <th>Size</th>
+                <th style={{ textAlign: 'right' }}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {docs.map(d => {
+                const ai = d.ai_summary ? JSON.parse(d.ai_summary) : null;
+                return (
+                  <tr key={d.id}>
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <div style={{ width: 34, height: 34, borderRadius: 8, background: `var(--${catColor(d.category)}-bg)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>{catIcon(d.category)}</div>
+                        <div>
+                          <div style={{ fontWeight: 600, color: 'var(--txt)', fontSize: 13 }}>{d.name}</div>
+                          {ai?.type && <div style={{ fontSize: 11, color: 'var(--txt4)' }}>{ai.type}</div>}
+                        </div>
+                      </div>
+                    </td>
+                    <td style={{ fontSize: 13 }}>{d.member_name || '—'}</td>
+                    <td><Badge color="gray">{d.category}</Badge></td>
+                    <td><Badge color={statusColor(d.status)}>{statusLabel(d.status)}</Badge></td>
+                    <td style={{ fontSize: 13, color: d.expiry_date && new Date(d.expiry_date) < new Date(Date.now() + 90*86400000) ? 'var(--amber)' : 'var(--txt3)' }}>
+                      {d.expiry_date ? fmtDate(d.expiry_date) : '—'}
+                    </td>
+                    <td style={{ fontSize: 12, color: 'var(--txt4)' }}>{d.file_size || '—'}</td>
+                    <td>
+                      <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                        {d.ai_analyzed && <Badge color="purple">✨ AI</Badge>}
+                        <button className="btn btn-xs btn-blue">View</button>
+                        <button className="btn btn-xs btn-outline" onClick={() => deleteDoc(d.id)} style={{ color: 'var(--red)' }}>✕</button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       )}
-
       {/* Upload Modal */}
       {showUpload && (
         <Modal title="Upload Document" onClose={() => { setShowUpload(false); setPendingFile(null); setAiResult(null); }} maxWidth={580}
@@ -167,8 +187,8 @@ export default function DocumentsPage({ navigate }) {
           )}
           {uploading && (
             <div style={{ textAlign: 'center', padding: '40px 0' }}>
-              <div style={{ width: 60, height: 60, borderRadius: '50%', background: 'var(--violet-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, margin: '0 auto 16px', animation: 'pulse 1s infinite' }}>✨</div>
-              <p style={{ fontSize: 16, fontWeight: 600, color: 'var(--navy)' }}>AI is reading your document…</p>
+              <div style={{ width: 60, height: 60, borderRadius: '50%', background: 'var(--purple-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, margin: '0 auto 16px', animation: 'pulse 1s infinite' }}>✨</div>
+              <p style={{ fontSize: 16, fontWeight: 600, color: 'var(--txt)' }}>AI is reading your document…</p>
               <p style={{ fontSize: 13, color: 'var(--txt3)', marginTop: 6 }}>Extracting dates, expiry, and key details</p>
               <div style={{ marginTop: 20, height: 4, background: 'var(--border)', borderRadius: 2, overflow: 'hidden' }}>
                 <div style={{ width: '70%', height: '100%', background: 'var(--teal)', borderRadius: 2, animation: 'shimmer 1.5s ease infinite' }} />
@@ -225,8 +245,8 @@ export default function DocumentsPage({ navigate }) {
           )}
           {scanStep === 1 && (
             <div style={{ textAlign: 'center', padding: '20px 0' }}>
-              <div style={{ width: 60, height: 60, borderRadius: '50%', background: 'var(--violet-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, margin: '0 auto 16px', animation: 'pulse 1s infinite' }}>✨</div>
-              <p style={{ fontSize: 16, fontWeight: 600, color: 'var(--navy)' }}>AI scanning document…</p>
+              <div style={{ width: 60, height: 60, borderRadius: '50%', background: 'var(--purple-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, margin: '0 auto 16px', animation: 'pulse 1s infinite' }}>✨</div>
+              <p style={{ fontSize: 16, fontWeight: 600, color: 'var(--txt)' }}>AI scanning document…</p>
               <p style={{ fontSize: 13, color: 'var(--txt3)', marginTop: 6 }}>OCR + document recognition + field extraction</p>
               <button className="btn btn-teal" style={{ marginTop: 24 }} onClick={() => { setShowScan(false); setScanStep(0); setShowUpload(true); setPendingFile(null); setAiResult(simulateAI('scanned_document.jpg', 'identity')); setUploading(false); }}>Continue to Upload →</button>
             </div>
