@@ -64,7 +64,7 @@ export default function SettingsPage({ navigate }) {
                 <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--txt2)', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 14 }}>Subscription</div>
                 <div style={{ background: 'var(--navy)', borderRadius: 12, padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: '#fff' }}>
                   <div>
-                    <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 18 }}>{family?.plan?.toUpperCase() || 'Pro'} Plan</div>
+                    <div style={{ fontFamily: "'DM Serif Display', serif", fontSize: 18 }}>{family?.plan?.toUpperCase() || 'Pro'} Plan</div>
                     <div style={{ fontSize: 12, color: 'rgba(255,255,255,.5)', marginTop: 3 }}>₹1,299/month · Renews Apr 1, 2025</div>
                   </div>
                   <Badge color="teal">Active</Badge>
@@ -83,7 +83,7 @@ export default function SettingsPage({ navigate }) {
                   <input type="password" className="form-input" value={pwForm[k]} onChange={e => setPwForm(f => ({ ...f, [k]: e.target.value }))} placeholder="••••••••" />
                 </div>
               ))}
-              {pwMsg && <div style={{ fontSize: 13, marginBottom: 12, color: pwMsg.startsWith('✅') ? 'var(--teal)' : 'var(--rose)' }}>{pwMsg}</div>}
+              {pwMsg && <div style={{ fontSize: 13, marginBottom: 12, color: pwMsg.startsWith('✅') ? 'var(--teal)' : 'var(--red)' }}>{pwMsg}</div>}
               <button className="btn btn-primary" onClick={changePassword}>Update Password</button>
 
               <div style={{ borderTop: '1px solid var(--border)', marginTop: 24, paddingTop: 20 }}>
@@ -165,7 +165,7 @@ export default function SettingsPage({ navigate }) {
                 <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--txt2)', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 16 }}>Choose Plan</div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                   <div style={{ padding: 20, background: 'var(--navy)', borderRadius: 14, color: '#fff' }}>
-                    <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 20, marginBottom: 4 }}>Pro Plan</div>
+                    <div style={{ fontFamily: "'DM Serif Display', serif", fontSize: 20, marginBottom: 4 }}>Pro Plan</div>
                     <div style={{ fontSize: 30, fontWeight: 600, marginBottom: 10 }}>₹1,299<span style={{ fontSize: 14, fontWeight: 400, opacity: .6 }}>/mo</span></div>
                     {['Unlimited documents','6 family members','AI auto-filing','Portfolio tracking','Priority support'].map(f => (
                       <div key={f} style={{ fontSize: 12, color: 'rgba(255,255,255,.75)', marginBottom: 5 }}>✓ {f}</div>
@@ -173,7 +173,7 @@ export default function SettingsPage({ navigate }) {
                     <Badge color="teal" style={{ marginTop: 12 }}>Current Plan</Badge>
                   </div>
                   <div style={{ padding: 20, border: '1.5px dashed var(--border2)', borderRadius: 14 }}>
-                    <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 20, color: 'var(--navy)', marginBottom: 4 }}>Family Plan</div>
+                    <div style={{ fontFamily: "'DM Serif Display', serif", fontSize: 20, color: 'var(--navy)', marginBottom: 4 }}>Family Plan</div>
                     <div style={{ fontSize: 30, fontWeight: 600, color: 'var(--navy)', marginBottom: 10 }}>₹2,499<span style={{ fontSize: 14, fontWeight: 400, color: 'var(--txt2)' }}>/mo</span></div>
                     {['Everything in Pro','12 family members','Advisor access','Dedicated support','Custom branding'].map(f => (
                       <div key={f} style={{ fontSize: 12, color: 'var(--txt2)', marginBottom: 5 }}>✓ {f}</div>
