@@ -15,24 +15,13 @@ export const fmtDate = (d) => {
 
 export const daysUntil = (dateStr) => {
   if (!dateStr) return null;
-  const diff = new Date(dateStr) - new Date();
-  return Math.ceil(diff / (1000 * 60 * 60 * 24));
+  return Math.ceil((new Date(dateStr) - new Date()) / 86400000);
 };
 
-export const initials = (firstName, lastName) =>
-  `${(firstName || '')[0] || ''}${(lastName || '')[0] || ''}`.toUpperCase();
+export const initials = (f, l) => `${(f || '')[0] || ''}${(l || '')[0] || ''}`.toUpperCase();
 
-export const catIcon = (cat) => ({
-  identity: '🪪', finance: '💰', property: '🏠', insurance: '🛡',
-  legal: '⚖️', education: '🎓', medical: '🏥', tax: '🧾', other: '📄',
-}[cat] || '📄');
+export const catIcon = (c) => ({ identity: '🪪', finance: '💰', property: '🏠', insurance: '🛡', legal: '⚖️', education: '🎓', medical: '🏥', tax: '🧾', other: '📄' }[c] || '📄');
 
-export const catColor = (cat) => ({
-  identity: 'navy', finance: 'teal', property: 'amber', insurance: 'rose',
-  legal: 'violet', education: 'blue', medical: 'teal', tax: 'amber', other: 'navy',
-}[cat] || 'navy');
+export const catColor = (c) => ({ identity: 'navy', finance: 'teal', property: 'amber', insurance: 'red', legal: 'purple', education: 'blue', medical: 'teal', tax: 'amber', other: 'gray' }[c] || 'gray');
 
-export const assetColor = (cat) => ({
-  'real-estate': '#0f1f3d', equities: '#07b98a', 'fixed-income': '#f59e0b',
-  cash: '#7c3aed', gold: '#f59e0b', crypto: '#3b82f6', other: '#8fa3c7',
-}[cat] || '#8fa3c7');
+export const assetColor = (c) => ({ 'real-estate': '#1e429f', equities: '#057a55', 'fixed-income': '#c27803', cash: '#6c2bd9', gold: '#f59e0b', crypto: '#3b82f6', other: '#6b7280' }[c] || '#6b7280');
