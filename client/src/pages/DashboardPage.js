@@ -26,7 +26,11 @@ export default function DashboardPage({ navigate }) {
 
   useEffect(() => {
     Promise.all([api.get('/dashboard/summary'), api.get('/tasks'), api.get('/alerts')])
-      .then(([s, t, a]) => { setSummary(s.data); setTasks(t.data.slice(0, 5)); setAlerts(a.data.filter(x => !x.is_read).slice(0, 4)); })
+      .then(([s, t, a]) => {
+        setSummary(s.data);
+        setTasks(t.data.slice(0, 5));
+        setAlerts(a.data.filter(x => !x.is_read).slice(0, 4));
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -43,7 +47,14 @@ export default function DashboardPage({ navigate }) {
         labels: summary.snapshots.map(s => new Date(s.snapshot_date).toLocaleDateString('en-IN', { month: 'short' })),
         datasets: [{ data: summary.snapshots.map(s => +(s.net_worth / 100000).toFixed(1)), borderColor: '#2563eb', backgroundColor: grad, fill: true, tension: 0.4, pointRadius: 4, pointBackgroundColor: '#2563eb', pointBorderColor: '#fff', pointBorderWidth: 2, borderWidth: 2.5 }],
       },
-      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false }, ticks: { font: { size: 11 }, color: '#94a3b8' } }, y: { grid: { color: 'rgba(0,0,0,.04)' }, ticks: { font: { size: 11 }, color: '#94a3b8', callback: v => 'Rs.' + v + 'L' } } } },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { display: false }, ticks: { font: { size: 11 }, color: '#94a3b8' } },
+          y: { grid: { color: 'rgba(0,0,0,.04)' }, ticks: { font: { size: 11 }, color: '#94a3b8', callback: v => 'Rs.' + v + 'L' } },
+        },
+      },
     });
     return () => { if (lineChart.current) lineChart.current.destroy(); };
   }, [summary]);
@@ -64,6 +75,7 @@ export default function DashboardPage({ navigate }) {
     setTasks(ts => ts.map(t => t.id === task.id ? upd : t));
     await api.put('/tasks/' + task.id, upd).catch(() => {});
   };
+
   const dismissAlert = async (id) => {
     setAlerts(a => a.filter(x => x.id !== id));
     await api.put('/alerts/' + id + '/dismiss').catch(() => {});
@@ -71,27 +83,9 @@ export default function DashboardPage({ navigate }) {
 
   const stats = summary?.stats || {};
   const nw = stats.netWorth || 0;
-  const h = new Date().getHours();
-  const greet = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
 
   return (
     <div className="page-inner">
-      <div className="nw-banner">
-        <div className="nw-greeting">{greet}, {user?.first_name}</div>
-        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 24, flexWrap: 'wrap' }}>
-          <div>
-            <div className="nw-label">Total Net Worth</div>
-            <div className="nw-value">{loading ? '--' : fmtINR(nw)}</div>
-            <div className="nw-change">+Rs.52,400 this month / +2.1%</div>
-          </div>
-        </div>
-        <div className="nw-stats">
-          <div><div className="nw-stat-label">Documents</div><div className="nw-stat-val">{stats.documents || 247}</div><div className="nw-stat-sub">12 categories</div></div>
-          <div><div className="nw-stat-label">Family Members</div><div className="nw-stat-val">{stats.familyMembers || 5}</div><div className="nw-stat-sub">3 with access</div></div>
-          <div><div className="nw-stat-label">Active Alerts</div><div className="nw-stat-val" style={{ color: '#fcd34d' }}>{stats.alerts || 3}</div><div className="nw-stat-sub">Needs attention</div></div>
-          <div><div className="nw-stat-label">AI Insights</div><div className="nw-stat-val" style={{ color: '#6ee7b7' }}>6</div><div className="nw-stat-sub">New today</div></div>
-        </div>
-      </div>
 
       <div className="insight-strip">
         <div className="insight-strip-icon">*</div>
@@ -106,10 +100,10 @@ export default function DashboardPage({ navigate }) {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 16, marginBottom: 24 }}>
-        <StatCard accent="blue"  icon="Rs" iconBg="var(--blue-bg)"   label="Net Worth"    value={loading ? '...' : fmtK(nw)} sub="+Rs.52,400 this month" subUp />
-        <StatCard accent="green" icon="+"  iconBg="var(--green-bg)"  label="Total Assets" value={loading ? '...' : fmtK(stats.assets || 0)} sub="Across all classes" />
-        <StatCard accent="red"   icon="-"  iconBg="var(--red-bg)"    label="Liabilities"  value={loading ? '...' : fmtK(stats.liabilities || 0)} sub="Loans and EMIs" subDown />
-        <StatCard accent="amber" icon="#"  iconBg="var(--amber-bg)"  label="Documents"    value={stats.documents || 247} sub="3 expiring soon" />
+        <StatCard accent="blue"  icon="Rs" iconBg="var(--blue-bg)"  label="Net Worth"    value={loading ? '...' : fmtK(nw)} sub="+Rs.52,400 this month" subUp />
+        <StatCard accent="green" icon="+"  iconBg="var(--green-bg)" label="Total Assets" value={loading ? '...' : fmtK(stats.assets || 0)} sub="Across all classes" />
+        <StatCard accent="red"   icon="-"  iconBg="var(--red-bg)"   label="Liabilities"  value={loading ? '...' : fmtK(stats.liabilities || 0)} sub="Loans and EMIs" subDown />
+        <StatCard accent="amber" icon="#"  iconBg="var(--amber-bg)" label="Documents"    value={stats.documents || 247} sub="3 expiring soon" />
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 16, marginBottom: 16 }}>
@@ -155,24 +149,32 @@ export default function DashboardPage({ navigate }) {
             <CardHeader title="Pending Tasks" action={<button className="btn btn-xs btn-blue" onClick={() => navigate('calendar')}>+ Add</button>} />
           </div>
           <div style={{ paddingTop: 12 }}>
-            {loading ? <div style={{ padding: '20px', textAlign: 'center', color: 'var(--txt4)' }}>Loading...</div>
-            : tasks.length === 0 ? <div style={{ padding: '20px', textAlign: 'center', color: 'var(--txt4)' }}>No tasks</div>
-            : tasks.map(task => (
+            {loading ? (
+              <div style={{ padding: '20px', textAlign: 'center', color: 'var(--txt4)' }}>Loading...</div>
+            ) : tasks.length === 0 ? (
+              <div style={{ padding: '20px', textAlign: 'center', color: 'var(--txt4)' }}>No tasks</div>
+            ) : tasks.map(task => (
               <div key={task.id} className="task-item" onClick={() => toggleTask(task)}>
                 <div className={'task-check' + (task.is_done ? ' done' : '')}>{task.is_done ? 'v' : ''}</div>
                 <span className={'task-title' + (task.is_done ? ' done' : '')}>{task.title}</span>
-                {task.due_date && <span className="task-due" style={{ color: new Date(task.due_date) < new Date() ? 'var(--red)' : 'var(--txt4)' }}>{fmtDate(task.due_date)}</span>}
+                {task.due_date && (
+                  <span className="task-due" style={{ color: new Date(task.due_date) < new Date() ? 'var(--red)' : 'var(--txt4)' }}>
+                    {fmtDate(task.due_date)}
+                  </span>
+                )}
               </div>
             ))}
           </div>
         </div>
+
         <div className="card">
           <div className="card-header" style={{ paddingBottom: 0 }}>
             <CardHeader title="Recent Alerts" action={<button className="btn btn-xs btn-outline" onClick={() => navigate('notifications')}>View All</button>} />
           </div>
           <div style={{ paddingTop: 12 }}>
-            {alerts.length === 0 ? <div style={{ padding: '20px', textAlign: 'center', color: 'var(--txt4)' }}>All clear</div>
-            : alerts.map(alert => {
+            {alerts.length === 0 ? (
+              <div style={{ padding: '20px', textAlign: 'center', color: 'var(--txt4)' }}>All clear</div>
+            ) : alerts.map(alert => {
               const c = { critical: 'var(--red)', warning: 'var(--amber)', info: 'var(--blue)', success: 'var(--green)' }[alert.severity] || 'var(--blue)';
               return (
                 <div key={alert.id} className="alert-item">
@@ -189,16 +191,6 @@ export default function DashboardPage({ navigate }) {
         </div>
       </div>
 
-      <div className="card" style={{ padding: 20 }}>
-        <div className="section-label" style={{ marginBottom: 14 }}>Quick Actions</div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 10 }}>
-          {[['Upload Doc','documents'],['Add Member','add-member'],['Portfolio','portfolio'],['AI Insights','insights'],['Calendar','calendar'],['Vault Audit','audit']].map(([l, p]) => (
-            <button key={p} className="quick-action" onClick={() => navigate(p)}>
-              <span className="quick-action-icon">+</span>{l}
-            </button>
-          ))}
-        </div>
-      </div>
     </div>
   );
 }

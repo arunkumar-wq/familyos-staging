@@ -16,10 +16,18 @@ import EditProfilePage from './pages/EditProfilePage';
 import AddMemberPage from './pages/AddMemberPage';
 
 const PAGE_TITLES = {
-  dashboard: 'Dashboard', documents: 'Document Vault', portfolio: 'Portfolio',
-  family: 'Family', insights: 'AI Insights', audit: 'Vault Audit',
-  calendar: 'Calendar', notifications: 'Notifications', settings: 'Settings',
-  profile: 'Edit Profile', 'add-member': 'Add Member', 'edit-member': 'Edit Member',
+  dashboard:    'Dashboard',
+  documents:    'Documents',
+  portfolio:    'Portfolio',
+  family:       'Family',
+  insights:     'AI Insights',
+  audit:        'Vault Audit',
+  calendar:     'Calendar',
+  notifications:'Notifications',
+  settings:     'Settings',
+  profile:      'Edit Profile',
+  'add-member': 'Add Member',
+  'edit-member':'Edit Member',
 };
 
 function AppShell() {
@@ -32,7 +40,7 @@ function AppShell() {
     return (
       <div className="loading-screen" style={{ height: '100vh' }}>
         <div className="spinner" />
-        <p style={{ color: 'var(--txt3)', fontSize: 13 }}>Loading FamilyOS…</p>
+        <p style={{ color: 'var(--txt3)', fontSize: 13 }}>Loading FamilyOS...</p>
       </div>
     );
   }
@@ -47,28 +55,39 @@ function AppShell() {
 
   const renderPage = () => {
     switch (page) {
-      case 'dashboard':     return <DashboardPage navigate={navigate} />;
-      case 'documents':     return <DocumentsPage navigate={navigate} />;
-      case 'portfolio':     return <PortfolioPage />;
-      case 'family':        return <FamilyPage navigate={navigate} />;
-      case 'insights':      return <InsightsPage />;
-      case 'audit':         return <AuditPage />;
-      case 'calendar':      return <CalendarPage />;
-      case 'notifications': return <NotificationsPage />;
-      case 'settings':      return <SettingsPage navigate={navigate} />;
-      case 'profile':       return <EditProfilePage navigate={navigate} />;
-      case 'add-member':    return <AddMemberPage navigate={navigate} editMember={null} />;
-      case 'edit-member':   return <AddMemberPage navigate={navigate} editMember={editMemberData} />;
-      default:              return <DashboardPage navigate={navigate} />;
+      case 'dashboard':    return <DashboardPage navigate={navigate} />;
+      case 'documents':    return <DocumentsPage navigate={navigate} />;
+      case 'portfolio':    return <PortfolioPage />;
+      case 'family':       return <FamilyPage navigate={navigate} />;
+      case 'insights':     return <InsightsPage />;
+      case 'audit':        return <AuditPage />;
+      case 'calendar':     return <CalendarPage />;
+      case 'notifications':return <NotificationsPage />;
+      case 'settings':     return <SettingsPage navigate={navigate} />;
+      case 'profile':      return <EditProfilePage navigate={navigate} />;
+      case 'add-member':   return <AddMemberPage navigate={navigate} editMember={null} />;
+      case 'edit-member':  return <AddMemberPage navigate={navigate} editMember={editMemberData} />;
+      default:             return <DashboardPage navigate={navigate} />;
     }
   };
 
   return (
     <div className="app-shell">
-      {mobileSidebar && <div className="mobile-overlay" onClick={() => setMobileSidebar(false)} />}
-      <Sidebar page={page} navigate={navigate} mobile={mobileSidebar} onClose={() => setMobileSidebar(false)} />
+      {mobileSidebar && (
+        <div className="mobile-overlay" onClick={() => setMobileSidebar(false)} />
+      )}
+      <Sidebar
+        page={page}
+        navigate={navigate}
+        mobile={mobileSidebar}
+        onClose={() => setMobileSidebar(false)}
+      />
       <div className="main-content">
-        <Topbar title={PAGE_TITLES[page] || 'FamilyOS'} onMenuClick={() => setMobileSidebar(true)} navigate={navigate} />
+        <Topbar
+          title={PAGE_TITLES[page] || 'FamilyOS'}
+          onMenuClick={() => setMobileSidebar(true)}
+          navigate={navigate}
+        />
         <div className="page-scroll">{renderPage()}</div>
       </div>
     </div>
