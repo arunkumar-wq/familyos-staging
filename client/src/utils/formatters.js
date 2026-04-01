@@ -10,7 +10,13 @@ export const fmtK = (n) => {
 
 export const fmtDate = (d) => {
   if (!d) return '—';
-  return new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+  try {
+    const date = new Date(d);
+    if (isNaN(date.getTime())) return '—';
+    return date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+  } catch {
+    return '—';
+  }
 };
 
 export const daysUntil = (dateStr) => {
@@ -24,4 +30,4 @@ export const catIcon = (c) => ({ identity: '🪪', finance: '💰', property: '�
 
 export const catColor = (c) => ({ identity: 'navy', finance: 'teal', property: 'amber', insurance: 'red', legal: 'purple', education: 'blue', medical: 'teal', tax: 'amber', other: 'gray' }[c] || 'gray');
 
-export const assetColor = (c) => ({ 'real-estate': '#1e429f', equities: '#057a55', 'fixed-income': '#c27803', cash: '#6c2bd9', gold: '#f59e0b', crypto: '#3b82f6', other: '#6b7280' }[c] || '#6b7280');
+export const assetColor = (c) => ({ 'real-estate': '#1e429f', equities: '#057a55', 'fixed-income': '#c27803', cash: '#6c2bd9', gold: '#f59e0b', crypto: '#3b82f6', mf: '#0891b2', other: '#6b7280' }[c] || '#6b7280');

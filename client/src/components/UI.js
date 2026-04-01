@@ -46,11 +46,11 @@ export function PageHeader({ title, sub, children }) {
 
 export function Modal({ title, onClose, children, footer, maxWidth = 560 }) {
   return (
-    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+    <div className="modal-overlay" role="dialog" aria-modal="true" aria-label={title} onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="modal" style={{ maxWidth }}>
         <div className="modal-header">
           <h3>{title}</h3>
-          <button className="modal-close" onClick={onClose}>Ǘ</button>
+          <button className="modal-close" onClick={onClose} aria-label="Close dialog">&times;</button>
         </div>
         <div className="modal-body">{children}</div>
         {footer && <div className="modal-footer">{footer}</div>}
@@ -63,7 +63,7 @@ export function LoadingSpinner({ message = 'Loading…' }) {
   return (
     <div className="loading-screen">
       <div className="spinner" />
-      <p style={{ color: 'var(--txt3)', fontSize: 13 }}>{mssage}</p>
+      <p style={{ color: 'var(--txt3)', fontSize: 13 }}>{message}</p>
     </div>
   );
 }

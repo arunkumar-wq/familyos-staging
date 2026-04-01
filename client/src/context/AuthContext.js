@@ -24,6 +24,11 @@ export function AuthProvider({ children }) {
     const res = await api.post('/auth/login', { email, password });
     localStorage.setItem('fos_token', res.data.token);
     setUser(res.data.user);
+    // Fetch family data after login
+    try {
+      const meRes = await api.get('/auth/me');
+      setFamily(meRes.data.family);
+    } catch {}
     return res.data;
   };
 

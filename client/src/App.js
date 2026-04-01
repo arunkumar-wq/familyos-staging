@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, Component } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Sidebar from './components/Sidebar';
 import Topbar from './components/Topbar';
@@ -30,6 +30,39 @@ const PAGE_TITLES = {
   'edit-member':'Edit Member',
 };
 
+// Error boundary to prevent full-app crashes
+class ErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error, errorInfo) {
+    console.error('Page error:', error, errorInfo);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ padding: 40, textAlign: 'center' }}>
+          <h2 style={{ color: 'var(--txt)', marginBottom: 12 }}>Something went wrong</h2>
+          <p style={{ color: 'var(--txt3)', fontSize: 14, marginBottom: 20 }}>
+            An error occurred while rendering this page.
+          </p>
+          <button
+            className="btn btn-teal"
+            onClick={() => this.setState({ hasError: false, error: null })}
+          >
+            Try Again
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 function AppShell() {
   const { user, loading } = useAuth();
   const [page, setPage] = useState('dashboard');
@@ -48,7 +81,11 @@ function AppShell() {
   if (!user) return <LoginPage />;
 
   const navigate = (pg, extra) => {
-    if (pg === 'edit-member' && extra) setEditMemberData(extra);
+    if (pg === 'edit-member' && extra) {
+      setEditMemberData(extra);
+    } else if (pg !== 'edit-member') {
+      setEditMemberData(null);
+    }
     setPage(pg);
     setMobileSidebar(false);
   };
@@ -74,7 +111,7 @@ function AppShell() {
   return (
     <div className="app-shell">
       {mobileSidebar && (
-        <div className="mobile-overlay" onClick={() => setMobileSidebar(false)} />
+        <div className="mobile-overlay" onClick={() => setMobileSidebar(false)} aria-hidden="true" />
       )}
       <Sidebar
         page={page}
@@ -88,7 +125,11 @@ function AppShell() {
           onMenuClick={() => setMobileSidebar(true)}
           navigate={navigate}
         />
-        <div className="page-scroll">{renderPage()}</div>
+        <div className="page-scroll">
+          <ErrorBoundary key={page}>
+            {renderPage()}
+          </ErrorBoundary>
+        </div>
       </div>
     </div>
   );

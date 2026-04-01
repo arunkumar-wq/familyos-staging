@@ -3,9 +3,13 @@ const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 const { getDb } = require('../../database/db');
 const auth = require('../middleware/auth');
+const { requirePermission } = require('../middleware/auth');
 const upload = require('../middleware/upload');
 
 const router = express.Router();
+
+const VALID_CATEGORIES = ['identity', 'finance', 'property', 'insurance', 'legal', 'education', 'medical', 'tax', 'other'];
+const VALID_STATUSES = ['current', 'expiring', 'expired', 'review'];
 
 // GET /api/documents
 router.get('/', auth, (req, res) => {
@@ -20,17 +24,36 @@ router.get('/', auth, (req, res) => {
     `;
     const params = [req.user.family_id];
 
-    if (category && category !== 'all') { query += ` AND d.category = ?`; params.push(category); }
-    if (status && status !== 'all') { query += ` AND d.status = ?`; params.push(status); }
-    if (member && member !== 'all') { query += ` AND d.owner_id = ?`; params.push(member); }
-    if (search) { query += ` AND d.name LIKE ?`; params.push(`%${search}%`); }
+    // Enforce vault permission: 'own' users can only see their own documents
+    if (req.user.vault === 'own') {
+      query += ` AND d.owner_id = ?`;
+      params.push(req.user.id);
+    }
+
+    if (category && category !== 'all' && VALID_CATEGORIES.includes(category)) {
+      query += ` AND d.category = ?`;
+      params.push(category);
+    }
+    if (status && status !== 'all' && VALID_STATUSES.includes(status)) {
+      query += ` AND d.status = ?`;
+      params.push(status);
+    }
+    if (member && member !== 'all') {
+      query += ` AND d.owner_id = ?`;
+      params.push(member);
+    }
+    if (search && search.length <= 200) {
+      query += ` AND d.name LIKE ?`;
+      params.push(`%${search}%`);
+    }
 
     query += ` ORDER BY d.created_at DESC`;
 
     const docs = db.prepare(query).all(...params);
     res.json(docs);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('GET /documents error:', err.message);
+    res.status(500).json({ error: 'Failed to load documents' });
   }
 });
 
@@ -42,10 +65,11 @@ router.get('/stats', auth, (req, res) => {
     const total = db.prepare(`SELECT COUNT(*) as c FROM documents WHERE family_id=? AND is_deleted=0`).get(fid).c;
     const byStatus = db.prepare(`SELECT status, COUNT(*) as c FROM documents WHERE family_id=? AND is_deleted=0 GROUP BY status`).all(fid);
     const byCategory = db.prepare(`SELECT category, COUNT(*) as c FROM documents WHERE family_id=? AND is_deleted=0 GROUP BY category`).all(fid);
-    const aiAnalyzed = db.prepare(`SELECT COUNT(*) as c FROM documents WHERE family_id=? AND ai_analyzed=1`).get(fid).c;
+    const aiAnalyzed = db.prepare(`SELECT COUNT(*) as c FROM documents WHERE family_id=? AND ai_analyzed=1 AND is_deleted=0`).get(fid).c;
     res.json({ total, byStatus, byCategory, aiAnalyzed });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('GET /documents/stats error:', err.message);
+    res.status(500).json({ error: 'Failed to load document stats' });
   }
 });
 
@@ -59,9 +83,16 @@ router.get('/:id', auth, (req, res) => {
       WHERE d.id = ? AND d.family_id = ?
     `).get(req.params.id, req.user.family_id);
     if (!doc) return res.status(404).json({ error: 'Document not found' });
+
+    // Enforce vault 'own' permission
+    if (req.user.vault === 'own' && doc.owner_id !== req.user.id) {
+      return res.status(403).json({ error: 'Permission denied' });
+    }
+
     res.json(doc);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('GET /documents/:id error:', err.message);
+    res.status(500).json({ error: 'Failed to load document' });
   }
 });
 
@@ -74,8 +105,23 @@ router.post('/upload', auth, upload.single('file'), (req, res) => {
 
     if (!file) return res.status(400).json({ error: 'No file uploaded' });
 
+    // Validate category
+    const validCategory = VALID_CATEGORIES.includes(category) ? category : 'other';
+
+    // Validate ownerId belongs to same family
+    let resolvedOwnerId = req.user.id;
+    if (ownerId && ownerId !== req.user.id) {
+      const owner = db.prepare(`SELECT id FROM users WHERE id = ? AND family_id = ? AND is_active = 1`).get(ownerId, req.user.family_id);
+      if (owner) {
+        resolvedOwnerId = ownerId;
+      }
+    }
+
+    // Validate name length
+    const docName = (name || file.originalname).slice(0, 255);
+
     // Simulate AI analysis
-    const aiSummary = simulateAIAnalysis(file.originalname, category);
+    const aiSummary = simulateAIAnalysis(file.originalname, validCategory);
 
     const id = uuidv4();
     db.prepare(`
@@ -83,27 +129,28 @@ router.post('/upload', auth, upload.single('file'), (req, res) => {
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, datetime('now'))
     `).run(
       id, req.user.family_id,
-      ownerId || req.user.id,
-      name || file.originalname,
+      resolvedOwnerId,
+      docName,
       file.originalname,
-      category || 'other',
+      validCategory,
       file.filename,
       formatFileSize(file.size),
       file.mimetype,
       JSON.stringify(aiSummary),
-      notes || null
+      notes ? notes.slice(0, 1000) : null
     );
 
     // Log audit
     db.prepare(`INSERT INTO audit_log (id, family_id, user_id, action, entity_type, entity_id, meta) VALUES (?, ?, ?, ?, ?, ?, ?)`).run(
       uuidv4(), req.user.family_id, req.user.id, 'document.uploaded', 'documents', id,
-      JSON.stringify({ name: name || file.originalname })
+      JSON.stringify({ name: docName })
     );
 
     const doc = db.prepare(`SELECT * FROM documents WHERE id = ?`).get(id);
     res.status(201).json({ ...doc, aiSummary });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('POST /documents/upload error:', err.message);
+    res.status(500).json({ error: 'Failed to upload document' });
   }
 });
 
@@ -112,13 +159,49 @@ router.put('/:id', auth, (req, res) => {
   try {
     const db = getDb();
     const { name, category, status, expiry_date, notes, owner_id } = req.body;
+
+    // Verify document belongs to family
+    const existing = db.prepare(`SELECT owner_id FROM documents WHERE id = ? AND family_id = ?`).get(req.params.id, req.user.family_id);
+    if (!existing) return res.status(404).json({ error: 'Document not found' });
+
+    // Enforce vault 'own' permission
+    if (req.user.vault === 'own' && existing.owner_id !== req.user.id) {
+      return res.status(403).json({ error: 'Permission denied' });
+    }
+
+    // Validate category and status
+    const validCategory = category && VALID_CATEGORIES.includes(category) ? category : undefined;
+    const validStatus = status && VALID_STATUSES.includes(status) ? status : undefined;
+
+    // Validate owner_id belongs to same family
+    let resolvedOwnerId = existing.owner_id;
+    if (owner_id && owner_id !== existing.owner_id) {
+      const owner = db.prepare(`SELECT id FROM users WHERE id = ? AND family_id = ? AND is_active = 1`).get(owner_id, req.user.family_id);
+      if (owner) resolvedOwnerId = owner_id;
+    }
+
     db.prepare(`
       UPDATE documents SET name=?, category=?, status=?, expiry_date=?, notes=?, owner_id=?, updated_at=datetime('now')
       WHERE id=? AND family_id=?
-    `).run(name, category, status, expiry_date, notes, owner_id, req.params.id, req.user.family_id);
+    `).run(
+      name ? name.slice(0, 255) : null,
+      validCategory, validStatus,
+      expiry_date || null,
+      notes ? notes.slice(0, 1000) : null,
+      resolvedOwnerId,
+      req.params.id, req.user.family_id
+    );
+
+    // Audit log
+    db.prepare(`INSERT INTO audit_log (id, family_id, user_id, action, entity_type, entity_id, meta) VALUES (?, ?, ?, ?, ?, ?, ?)`).run(
+      uuidv4(), req.user.family_id, req.user.id, 'document.updated', 'documents', req.params.id,
+      JSON.stringify({ name })
+    );
+
     res.json({ success: true });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('PUT /documents/:id error:', err.message);
+    res.status(500).json({ error: 'Failed to update document' });
   }
 });
 
@@ -126,10 +209,27 @@ router.put('/:id', auth, (req, res) => {
 router.delete('/:id', auth, (req, res) => {
   try {
     const db = getDb();
-    db.prepare(`UPDATE documents SET is_deleted=1 WHERE id=? AND family_id=?`).run(req.params.id, req.user.family_id);
+
+    // Verify document exists and check ownership
+    const existing = db.prepare(`SELECT owner_id, name FROM documents WHERE id = ? AND family_id = ?`).get(req.params.id, req.user.family_id);
+    if (!existing) return res.status(404).json({ error: 'Document not found' });
+
+    if (req.user.vault === 'own' && existing.owner_id !== req.user.id) {
+      return res.status(403).json({ error: 'Permission denied' });
+    }
+
+    db.prepare(`UPDATE documents SET is_deleted=1, updated_at=datetime('now') WHERE id=? AND family_id=?`).run(req.params.id, req.user.family_id);
+
+    // Audit log
+    db.prepare(`INSERT INTO audit_log (id, family_id, user_id, action, entity_type, entity_id, meta) VALUES (?, ?, ?, ?, ?, ?, ?)`).run(
+      uuidv4(), req.user.family_id, req.user.id, 'document.deleted', 'documents', req.params.id,
+      JSON.stringify({ name: existing.name })
+    );
+
     res.json({ success: true });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('DELETE /documents/:id error:', err.message);
+    res.status(500).json({ error: 'Failed to delete document' });
   }
 });
 

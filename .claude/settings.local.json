@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node -c server/index.js)",
+      "Bash(node -c server/middleware/auth.js)",
+      "Bash(node -c server/middleware/upload.js)",
+      "Bash(node -c server/routes/auth.js)",
+      "Bash(node -c server/routes/family.js)"
+    ]
+  }
+}

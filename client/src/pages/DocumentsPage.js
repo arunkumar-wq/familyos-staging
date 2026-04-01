@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import api from '../utils/api';
 import { catIcon, catColor, fmtDate } from '../utils/formatters';
 import { PageHeader, Modal, Badge, EmptyState } from '../components/UI';
@@ -41,6 +41,7 @@ export default function DocumentsPage({ navigate }) {
   const [stats, setStats] = useState({});
   const [cat, setCat] = useState('all');
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [showUpload, setShowUpload] = useState(false);
   const [dragging, setDragging] = useState(false);
@@ -49,22 +50,36 @@ export default function DocumentsPage({ navigate }) {
   const [uploadForm, setUploadForm] = useState({ name: '', category: 'other', notes: '' });
   const [members, setMembers] = useState([]);
   const [selectedMember, setSelectedMember] = useState('');
+  const [uploadError, setUploadError] = useState('');
   const fileInputRef = useRef();
   const [pendingFile, setPendingFile] = useState(null);
 
+  // Debounce search input
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), 350);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  // Load members once
+  useEffect(() => {
+    api.get('/family/members').then(r => { setMembers(r.data); if (r.data[0]) setSelectedMember(r.data[0].id); }).catch(() => {});
+  }, []);
+
+  // Load docs when filter/search changes
   useEffect(() => {
     loadDocs();
-    api.get('/family/members').then(r => { setMembers(r.data); if (r.data[0]) setSelectedMember(r.data[0].id); });
-  }, [cat, search]);
+  }, [cat, debouncedSearch]);
 
   const loadDocs = async () => {
     setLoading(true);
     try {
       const params = {};
       if (cat !== 'all') params.category = cat;
-      if (search) params.search = search;
+      if (debouncedSearch) params.search = debouncedSearch;
       const [docsRes, statsRes] = await Promise.all([api.get('/documents', { params }), api.get('/documents/stats')]);
       setDocs(docsRes.data); setStats(statsRes.data);
+    } catch (err) {
+      console.error('Failed to load documents:', err);
     } finally { setLoading(false); }
   };
 
@@ -72,32 +87,42 @@ export default function DocumentsPage({ navigate }) {
     if (!file) return;
     setPendingFile(file);
     setUploadForm(f => ({ ...f, name: file.name.replace(/\.[^.]+$/, ''), category: guessCat(file.name) }));
-    setUploading(true); setAiResult(null);
+    setUploading(true); setAiResult(null); setUploadError('');
     setTimeout(() => { setAiResult(simulateAI(file.name, guessCat(file.name))); setUploading(false); }, 1800);
   };
 
   const submitUpload = async () => {
     if (!pendingFile) return;
+    setUploadError('');
     const fd = new FormData();
     fd.append('file', pendingFile);
     fd.append('name', uploadForm.name);
     fd.append('category', uploadForm.category);
     fd.append('notes', uploadForm.notes);
-    fd.append('memberId', selectedMember);
+    fd.append('ownerId', selectedMember);
     if (aiResult) fd.append('aiSummary', JSON.stringify(aiResult));
-    try { await api.post('/documents', fd, { headers: { 'Content-Type': 'multipart/form-data' } }); } catch (e) { console.error(e); }
-    setShowUpload(false); setPendingFile(null); setAiResult(null); loadDocs();
+    try {
+      await api.post('/documents/upload', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+      setShowUpload(false); setPendingFile(null); setAiResult(null); loadDocs();
+    } catch (e) {
+      setUploadError(e.response?.data?.error || 'Upload failed. Please try again.');
+    }
   };
 
   const deleteDoc = async (id) => {
     if (!window.confirm('Delete this document?')) return;
-    await api.delete('/documents/' + id); loadDocs();
+    try {
+      await api.delete('/documents/' + id);
+      loadDocs();
+    } catch (err) {
+      console.error('Delete failed:', err);
+    }
   };
 
   return (
     <div className="page-inner">
       <PageHeader title="Document Vault" sub={(stats.total || 0) + ' documents - AI-managed - AES-256 encrypted'}>
-        <button className="btn btn-teal" onClick={() => { setShowUpload(true); setAiResult(null); setPendingFile(null); setUploading(false); }}>+ Upload Document</button>
+        <button className="btn btn-teal" onClick={() => { setShowUpload(true); setAiResult(null); setPendingFile(null); setUploading(false); setUploadError(''); }}>+ Upload Document</button>
       </PageHeader>
 
       <div className="card" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', padding: '14px 0', marginBottom: 20 }}>
@@ -111,7 +136,7 @@ export default function DocumentsPage({ navigate }) {
 
       <div style={{ display: 'flex', gap: 12, marginBottom: 18, flexWrap: 'wrap', alignItems: 'center' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: '0 12px', height: 38, flex: 1, minWidth: 200 }}>
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search documents..." style={{ flex: 1, border: 'none', outline: 'none', fontSize: 13, background: 'transparent' }} />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search documents..." aria-label="Search documents" style={{ flex: 1, border: 'none', outline: 'none', fontSize: 13, background: 'transparent' }} />
         </div>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           {CATS.map(c => (
@@ -134,7 +159,8 @@ export default function DocumentsPage({ navigate }) {
             </thead>
             <tbody>
               {docs.map(d => {
-                const ai = d.ai_summary ? JSON.parse(d.ai_summary) : null;
+                let ai = null;
+                try { ai = d.ai_summary ? JSON.parse(d.ai_summary) : null; } catch {}
                 const soonExpiry = d.expiry_date && new Date(d.expiry_date) < new Date(Date.now() + 90 * 86400000);
                 return (
                   <tr key={d.id}>
@@ -154,8 +180,7 @@ export default function DocumentsPage({ navigate }) {
                     <td style={{ fontSize: 12, color: 'var(--txt4)' }}>{d.file_size || '--'}</td>
                     <td>
                       <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
-                        {d.ai_analyzed && <Badge color="purple">AI</Badge>}
-                        <button className="btn btn-xs btn-blue">View</button>
+                        {d.ai_analyzed ? <Badge color="purple">AI</Badge> : null}
                         <button className="btn btn-xs btn-outline" onClick={() => deleteDoc(d.id)} style={{ color: 'var(--red)' }}>Delete</button>
                       </div>
                     </td>
@@ -168,7 +193,7 @@ export default function DocumentsPage({ navigate }) {
       )}
 
       {showUpload && (
-        <Modal title="Upload Document" onClose={() => { setShowUpload(false); setPendingFile(null); setAiResult(null); }} maxWidth={580}
+        <Modal title="Upload Document" onClose={() => { setShowUpload(false); setPendingFile(null); setAiResult(null); setUploadError(''); }} maxWidth={580}
           footer={pendingFile && !uploading ? (
             <>
               <button className="btn btn-outline" onClick={() => { setShowUpload(false); setPendingFile(null); setAiResult(null); }}>Cancel</button>
@@ -176,17 +201,24 @@ export default function DocumentsPage({ navigate }) {
             </>
           ) : undefined}
         >
+          {uploadError && (
+            <div role="alert" style={{ background: 'var(--red-bg)', border: '1px solid var(--red-border)', borderRadius: 8, padding: '10px 14px', marginBottom: 12, color: 'var(--red)', fontSize: 13 }}>{uploadError}</div>
+          )}
           {!pendingFile && !uploading && !aiResult && (
             <div className={dragging ? 'dropzone active' : 'dropzone'}
               onDrop={e => { e.preventDefault(); setDragging(false); handleFile(e.dataTransfer.files[0]); }}
               onDragOver={e => { e.preventDefault(); setDragging(true); }}
               onDragLeave={() => setDragging(false)}
               onClick={() => fileInputRef.current.click()}
+              role="button"
+              tabIndex={0}
+              aria-label="Upload area - click or drop files"
+              onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') fileInputRef.current.click(); }}
             >
               <div className="dropzone-icon">^</div>
               <div className="dropzone-title">Drop files here or click to browse</div>
               <div className="dropzone-sub">PDF, JPG, PNG, DOCX - up to 50 MB</div>
-              <input ref={fileInputRef} type="file" style={{ display: 'none' }} accept=".pdf,.jpg,.jpeg,.png,.webp,.docx,.doc" onChange={e => handleFile(e.target.files[0])} />
+              <input ref={fileInputRef} type="file" style={{ display: 'none' }} accept=".pdf,.jpg,.jpeg,.png,.webp,.docx,.doc" onChange={e => { handleFile(e.target.files[0]); e.target.value = ''; }} aria-label="File upload" />
             </div>
           )}
           {uploading && (

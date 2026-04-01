@@ -1,15 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import api from '../utils/api';
 import { PageHeader, Badge } from '../components/UI';
 export default function AuditPage() {
   const [audit, setAudit] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
   useEffect(() => {
     api.get('/family/audit')
       .then(r => setAudit(Array.isArray(r.data)?r.data:[]))
-      .catch(e => console.error('Audit error',e))
+      .catch(e => setError('Failed to load audit data'))
       .finally(() => setLoading(false));
   }, []);
+
   const familyScore = audit.length ? Math.round(audit.reduce((s,m)=>s+m.score,0)/audit.length) : 0;
   const scoreColor = s => s>=80?'var(--green)':s>=60?'var(--amber)':'var(--red)';
   const dash = 2*Math.PI*52;
@@ -25,16 +28,19 @@ export default function AuditPage() {
         <button className="btn btn-outline">Export</button>
         <button className="btn btn-teal">Re-run Audit</button>
       </PageHeader>
+      {error && (
+        <div role="alert" style={{ background: 'var(--red-bg)', border: '1px solid var(--red-border)', borderRadius: 8, padding: '10px 14px', marginBottom: 16, color: 'var(--red)', fontSize: 13 }}>{error}</div>
+      )}
       <div className="card" style={{marginBottom:14}}>
         <div className="sec-bar sec-bar-teal">Family Vault Score</div>
         <div style={{padding:24}}>
           <div className="audit-ring-wrap">
             <div style={{textAlign:'center',flexShrink:0}}>
-              <svg width="130" height="130" viewBox="0 0 130 130">
+              <svg width="130" height="130" viewBox="0 0 130 130" role="img" aria-label={`Vault score: ${familyScore} out of 100`}>
                 <circle cx="65" cy="65" r="52" fill="none" stroke="var(--border)" strokeWidth="10"/>
                 <circle cx="65" cy="65" r="52" fill="none" stroke={scoreColor(familyScore)} strokeWidth="10" strokeDasharray={dash} strokeDashoffset={offset} strokeLinecap="round" transform="rotate(-90 65 65)" style={{transition:'stroke-dashoffset .8s'}}/>
-                <text x="65" y="62" textAnchor="middle" fontFamily="DM Sans,sans-serif" fontSize="28" fill="#111827">{familyScore}</text>
-                <text x="65" y="78" textAnchor="middle" fontFamily="DM Sans,sans-serif" fontSize="11" fill="#9ca3af">out of 100</text>
+                <text x="65" y="62" textAnchor="middle" fontFamily="DM Sans,sans-serif" fontSize="28" fill="var(--txt)">{familyScore}</text>
+                <text x="65" y="78" textAnchor="middle" fontFamily="DM Sans,sans-serif" fontSize="11" fill="var(--txt3)">out of 100</text>
               </svg>
               <div style={{fontSize:13,fontWeight:700,marginTop:6,color:scoreColor(familyScore)}}>{scoreLabel}</div>
             </div>
@@ -59,14 +65,16 @@ export default function AuditPage() {
         <div className="sec-bar sec-bar-navy">Member Document Health</div>
         {loading ? (
           <div style={{padding:40,textAlign:'center',color:'var(--txt3)'}}>Loading...</div>
+        ) : audit.length === 0 ? (
+          <div style={{padding:40,textAlign:'center',color:'var(--txt3)'}}>No family members found. Add members to see audit data.</div>
         ) : (
           <table className="data-table">
             <thead>
               <tr>
-                <th>Member</th>
-                {CATS.map(c=><th key={c}>{CAT_LABELS[c]}</th>)}
-                <th>Score</th>
-                <th style={{textAlign:'right'}}>Actions</th>
+                <th scope="col">Member</th>
+                {CATS.map(c=><th key={c} scope="col">{CAT_LABELS[c]}</th>)}
+                <th scope="col">Score</th>
+                <th scope="col" style={{textAlign:'right'}}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -74,7 +82,7 @@ export default function AuditPage() {
                 <tr key={m.id}>
                   <td>
                     <div style={{display:'flex',alignItems:'center',gap:8}}>
-                      <div className="avatar" style={{width:28,height:28,background:'var(--navy)',fontSize:10}}>
+                      <div className="avatar" style={{width:28,height:28,background:m.avatar_color||'var(--navy)',fontSize:10}}>
                         {(m.first_name?.[0]||'')+(m.last_name?.[0]||'')}
                       </div>
                       <span style={{fontWeight:600}}>{m.first_name} {m.last_name}</span>

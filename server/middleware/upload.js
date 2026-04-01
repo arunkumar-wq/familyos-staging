@@ -7,19 +7,37 @@ const storage = multer.diskStorage({
     cb(null, path.join(__dirname, '..', '..', 'uploads'));
   },
   filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname);
+    // Use UUID for filename to prevent path traversal
+    const ext = path.extname(file.originalname).toLowerCase();
     cb(null, `${uuidv4()}${ext}`);
   }
 });
 
+// Allowed extensions and their expected MIME types
+const ALLOWED_TYPES = {
+  '.pdf': ['application/pdf'],
+  '.jpg': ['image/jpeg'],
+  '.jpeg': ['image/jpeg'],
+  '.png': ['image/png'],
+  '.webp': ['image/webp'],
+  '.docx': ['application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
+  '.doc': ['application/msword'],
+};
+
 const fileFilter = (req, file, cb) => {
-  const allowed = ['.pdf', '.jpg', '.jpeg', '.png', '.webp', '.docx', '.doc'];
   const ext = path.extname(file.originalname).toLowerCase();
-  if (allowed.includes(ext)) {
-    cb(null, true);
-  } else {
-    cb(new Error(`File type ${ext} not allowed`), false);
+  const allowedMimes = ALLOWED_TYPES[ext];
+
+  if (!allowedMimes) {
+    return cb(new Error(`File type ${ext} not allowed`), false);
   }
+
+  // Verify MIME type matches extension
+  if (!allowedMimes.includes(file.mimetype)) {
+    return cb(new Error(`File content does not match extension ${ext}`), false);
+  }
+
+  cb(null, true);
 };
 
 const upload = multer({

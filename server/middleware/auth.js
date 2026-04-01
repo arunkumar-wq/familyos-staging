@@ -1,6 +1,17 @@
 const jwt = require('jsonwebtoken');
 const { getDb } = require('../../database/db');
 
+function getJwtSecret() {
+  const secret = process.env.JWT_SECRET;
+  if (!secret || secret === 'familyos_super_secret_key_change_in_production_2025') {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('JWT_SECRET must be set to a strong, unique value in production');
+    }
+    return 'dev_only_familyos_secret_not_for_production';
+  }
+  return secret;
+}
+
 function authMiddleware(req, res, next) {
   try {
     const authHeader = req.headers.authorization;
@@ -9,7 +20,7 @@ function authMiddleware(req, res, next) {
     }
 
     const token = authHeader.split(' ')[1];
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'familyos_secret');
+    const decoded = jwt.verify(token, getJwtSecret());
 
     const db = getDb();
     const user = db.prepare(`
@@ -28,4 +39,27 @@ function authMiddleware(req, res, next) {
   }
 }
 
+// Permission check helpers
+function requireRole(...roles) {
+  return (req, res, next) => {
+    if (!roles.includes(req.user.role)) {
+      return res.status(403).json({ error: 'Permission denied' });
+    }
+    next();
+  };
+}
+
+function requirePermission(field, ...levels) {
+  return (req, res, next) => {
+    if (!levels.includes(req.user[field])) {
+      return res.status(403).json({ error: 'Insufficient permissions' });
+    }
+    next();
+  };
+}
+
 module.exports = authMiddleware;
+module.exports.authMiddleware = authMiddleware;
+module.exports.requireRole = requireRole;
+module.exports.requirePermission = requirePermission;
+module.exports.getJwtSecret = getJwtSecret;

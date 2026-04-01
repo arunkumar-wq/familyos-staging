@@ -15,16 +15,35 @@ export default function NotificationsPage() {
   const [alerts, setAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
-  useEffect(() => { api.get('/alerts').then(r => setAlerts(r.data)).finally(() => setLoading(false)); }, []);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    api.get('/alerts')
+      .then(r => setAlerts(r.data))
+      .catch(() => setError('Failed to load alerts'))
+      .finally(() => setLoading(false));
+  }, []);
+
   const dismiss = async (id) => {
-    setAlerts(a => a.map(x => x.id===id?{...x,is_read:true}:x));
-    await api.put('/alerts/'+id+'/dismiss').catch(()=>{});
+    const prev = [...alerts];
+    setAlerts(a => a.filter(x => x.id !== id));
+    try {
+      await api.put('/alerts/'+id+'/dismiss');
+    } catch {
+      setAlerts(prev);
+    }
   };
-  const dismissAll = async () => {
-    const unread = alerts.filter(a => !a.is_read);
+
+  const markAllRead = async () => {
+    const prev = [...alerts];
     setAlerts(a => a.map(x => ({...x,is_read:true})));
-    await Promise.all(unread.map(u => api.put('/alerts/'+u.id+'/dismiss').catch(()=>{})));
+    try {
+      await api.put('/alerts/read-all');
+    } catch {
+      setAlerts(prev);
+    }
   };
+
   const filtered = alerts.filter(a => {
     if (filter==='unread') return !a.is_read;
     if (filter==='urgent') return a.severity==='critical';
@@ -34,8 +53,11 @@ export default function NotificationsPage() {
   return (
     <div className="page-inner" style={{ maxWidth:800 }}>
       <PageHeader title="Alerts" sub={unreadCount+' unread notification'+(unreadCount!==1?'s':'')}>
-        <button className="btn btn-outline" onClick={dismissAll}>Mark all read</button>
+        <button className="btn btn-outline" onClick={markAllRead} disabled={unreadCount === 0}>Mark all read</button>
       </PageHeader>
+      {error && (
+        <div role="alert" style={{ background: 'var(--red-bg)', border: '1px solid var(--red-border)', borderRadius: 8, padding: '10px 14px', marginBottom: 16, color: 'var(--red)', fontSize: 13 }}>{error}</div>
+      )}
       <div style={{ display:'flex', gap:8, marginBottom:18 }}>
         {['all','unread','urgent'].map(f => (
           <FilterBtn key={f} label={f.charAt(0).toUpperCase()+f.slice(1)} active={filter===f} onClick={() => setFilter(f)} />
@@ -55,11 +77,11 @@ export default function NotificationsPage() {
                 <span style={{ fontSize:13.5, fontWeight:600, color:'var(--txt)' }}>{a.title}</span>
                 {!a.is_read&&<Badge color={SEV_COLOR[a.severity]||'blue'}>{a.severity}</Badge>}
               </div>
-              <div style={{ fontSize:13, color:'var(--txt2)', marginBottom:4 }}>{a.message}</div>
+              <div style={{ fontSize:13, color:'var(--txt2)', marginBottom:4 }}>{a.description || a.message}</div>
               <div style={{ fontSize:11, color:'var(--txt4)' }}>{fmtDate(a.created_at)}</div>
             </div>
             {!a.is_read&&(
-              <button onClick={e=>{e.stopPropagation();dismiss(a.id);}} style={{ background:'none', border:'none', color:'var(--txt4)', cursor:'pointer', padding:'0 4px', fontSize:14 }}>x</button>
+              <button onClick={e=>{e.stopPropagation();dismiss(a.id);}} style={{ background:'none', border:'none', color:'var(--txt4)', cursor:'pointer', padding:'0 4px', fontSize:14 }} aria-label="Dismiss alert">&times;</button>
             )}
           </div>
         ))}

@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { initials } from '../utils/formatters';
+import api from '../utils/api';
 
 const NAV_SECTIONS = [
   {
@@ -12,10 +13,10 @@ const NAV_SECTIONS = [
   {
     label: 'Manage',
     items: [
-      { id: 'documents',  label: 'Documents',   icon: 'documents', badge: 3, badgeColor: 'blue' },
+      { id: 'documents',  label: 'Documents',   icon: 'documents', badgeKey: 'expiring', badgeColor: 'blue' },
       { id: 'portfolio',  label: 'Portfolio',   icon: 'portfolio' },
       { id: 'family',     label: 'Family',      icon: 'family' },
-      { id: 'insights',   label: 'AI Insights', icon: 'insights', badge: 5, badgeColor: 'amber' },
+      { id: 'insights',   label: 'AI Insights', icon: 'insights', badgeKey: 'insights', badgeColor: 'amber' },
     ],
   },
   {
@@ -23,7 +24,7 @@ const NAV_SECTIONS = [
     items: [
       { id: 'audit',         label: 'Vault Audit', icon: 'audit' },
       { id: 'calendar',      label: 'Calendar',    icon: 'calendar' },
-      { id: 'notifications', label: 'Alerts',      icon: 'bell', badge: 2, badgeColor: 'blue' },
+      { id: 'notifications', label: 'Alerts',      icon: 'bell', badgeKey: 'alerts', badgeColor: 'blue' },
     ],
   },
   {
@@ -58,6 +59,7 @@ function SvgIcon({ name, size = 16 }) {
       strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
+      aria-hidden="true"
     >
       <path d={PATHS[name] || PATHS.home} />
     </svg>
@@ -67,11 +69,30 @@ function SvgIcon({ name, size = 16 }) {
 export default function Sidebar({ page, navigate, mobile, onClose }) {
   const { user, logout } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
+  const [counts, setCounts] = useState({});
   const show = !collapsed || mobile;
+
+  // Fetch real badge counts
+  useEffect(() => {
+    Promise.all([
+      api.get('/alerts').catch(() => ({ data: [] })),
+      api.get('/documents/stats').catch(() => ({ data: {} })),
+    ]).then(([alertsRes, docsRes]) => {
+      const unreadAlerts = (alertsRes.data || []).filter(a => !a.is_read).length;
+      const expiringDocs = (docsRes.data?.byStatus || []).find(s => s.status === 'expiring')?.c || 0;
+      setCounts({
+        alerts: unreadAlerts,
+        expiring: expiringDocs,
+        insights: 0, // No real insights endpoint yet
+      });
+    });
+  }, [page]); // Refresh when page changes
 
   return (
     <aside
       className={`sidebar${mobile ? ' mobile-open' : ''}${collapsed && !mobile ? ' collapsed' : ''}`}
+      role="navigation"
+      aria-label="Main navigation"
     >
       {/* Logo */}
       <div className="sidebar-logo">
@@ -83,9 +104,10 @@ export default function Sidebar({ page, navigate, mobile, onClose }) {
           <button
             className="sidebar-collapse-btn"
             onClick={() => setCollapsed(c => !c)}
-            title="Toggle sidebar"
+            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
-            {collapsed ? '>' : '<'}
+            {collapsed ? '\u203A' : '\u2039'}
           </button>
         )}
         {mobile && (
@@ -93,9 +115,10 @@ export default function Sidebar({ page, navigate, mobile, onClose }) {
             className="sidebar-collapse-btn"
             onClick={onClose}
             style={{ marginLeft: 'auto' }}
-            title="Close"
+            title="Close menu"
+            aria-label="Close menu"
           >
-            x
+            &times;
           </button>
         )}
       </div>
@@ -107,29 +130,33 @@ export default function Sidebar({ page, navigate, mobile, onClose }) {
             {show && (
               <div className="sidebar-section-label">{section.label}</div>
             )}
-            {section.items.map(item => (
-              <button
-                key={item.id}
-                className={`nav-item${page === item.id ? ' active' : ''}`}
-                onClick={() => navigate(item.id)}
-                title={item.label}
-                style={collapsed && !mobile ? { justifyContent: 'center', padding: 0 } : {}}
-              >
-                <span className="nav-item-icon">
-                  <SvgIcon name={item.icon} size={16} />
-                </span>
-                {show && (
-                  <>
-                    <span className="nav-item-label">{item.label}</span>
-                    {item.badge && (
-                      <span className={`nav-badge nav-badge-${item.badgeColor}`}>
-                        {item.badge}
-                      </span>
-                    )}
-                  </>
-                )}
-              </button>
-            ))}
+            {section.items.map(item => {
+              const badgeCount = item.badgeKey ? counts[item.badgeKey] : 0;
+              return (
+                <button
+                  key={item.id}
+                  className={`nav-item${page === item.id ? ' active' : ''}`}
+                  onClick={() => navigate(item.id)}
+                  title={item.label}
+                  aria-current={page === item.id ? 'page' : undefined}
+                  style={collapsed && !mobile ? { justifyContent: 'center', padding: 0 } : {}}
+                >
+                  <span className="nav-item-icon">
+                    <SvgIcon name={item.icon} size={16} />
+                  </span>
+                  {show && (
+                    <>
+                      <span className="nav-item-label">{item.label}</span>
+                      {badgeCount > 0 && (
+                        <span className={`nav-badge nav-badge-${item.badgeColor}`}>
+                          {badgeCount}
+                        </span>
+                      )}
+                    </>
+                  )}
+                </button>
+              );
+            })}
           </div>
         ))}
       </nav>
@@ -139,6 +166,7 @@ export default function Sidebar({ page, navigate, mobile, onClose }) {
         <button
           className="sidebar-user-btn"
           onClick={() => navigate('profile')}
+          aria-label="Edit profile"
         >
           <div
             className="avatar"
@@ -171,6 +199,7 @@ export default function Sidebar({ page, navigate, mobile, onClose }) {
         {show && (
           <button
             onClick={logout}
+            aria-label="Sign out"
             style={{
               width: '100%',
               marginTop: 4,

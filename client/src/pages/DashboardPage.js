@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Chart, registerables } from 'chart.js';
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
@@ -6,14 +6,6 @@ import { fmtINR, fmtK, fmtDate } from '../utils/formatters';
 import { StatCard, CardHeader } from '../components/UI';
 
 Chart.register(...registerables);
-
-const ALLOC = [
-  { name: 'Real Estate',  pct: 38, color: '#1d4ed8' },
-  { name: 'Equities',     pct: 32, color: '#0891b2' },
-  { name: 'Fixed Income', pct: 18, color: '#d97706' },
-  { name: 'Cash',         pct: 8,  color: '#7c3aed' },
-  { name: 'Other',        pct: 4,  color: '#dc2626' },
-];
 
 const DOC_HEALTH_COLORS = { valid: '#059669', expiring: '#d97706', expired: '#dc2626' };
 const SEV_COLOR = { critical: 'var(--red)', warning: 'var(--amber)', info: 'var(--blue)', success: 'var(--green)' };
@@ -28,6 +20,7 @@ export default function DashboardPage({ navigate }) {
   const [docStats, setDocStats] = useState(null);
   const [portfolio, setPortfolio] = useState(null);
   const [loading,   setLoading] = useState(true);
+  const [error,     setError]   = useState('');
   const lineRef  = useRef(); const lineChart  = useRef();
   const donutRef = useRef(); const donutChart = useRef();
   const docRef   = useRef(); const docChart   = useRef();
@@ -48,6 +41,9 @@ export default function DashboardPage({ navigate }) {
       setMembers(m.data.slice(0, 6));
       setDocStats(ds.data);
       setPortfolio(pf.data);
+    }).catch(err => {
+      console.error('Dashboard load error:', err);
+      setError('Failed to load dashboard data');
     }).finally(() => setLoading(false));
   }, []);
 
@@ -70,29 +66,30 @@ export default function DashboardPage({ navigate }) {
     return () => { if (lineChart.current) lineChart.current.destroy(); };
   }, [summary]);
 
-  // Donut chart — Asset Allocation
+  // Donut chart — Asset Allocation (from real portfolio data)
   useEffect(() => {
-    if (!donutRef.current) return;
+    if (!donutRef.current || !portfolio?.allocation?.length) return;
     if (donutChart.current) donutChart.current.destroy();
+    const alloc = portfolio.allocation;
     donutChart.current = new Chart(donutRef.current.getContext('2d'), {
       type: 'doughnut',
-      data: { labels: ALLOC.map(a => a.name), datasets: [{ data: ALLOC.map(a => a.pct), backgroundColor: ALLOC.map(a => a.color), borderWidth: 0, hoverOffset: 4 }] },
+      data: { labels: alloc.map(a => a.category), datasets: [{ data: alloc.map(a => +a.percentage), backgroundColor: ['#1d4ed8', '#0891b2', '#d97706', '#7c3aed', '#dc2626', '#059669', '#f59e0b'].slice(0, alloc.length), borderWidth: 0, hoverOffset: 4 }] },
       options: { responsive: true, cutout: '72%', plugins: { legend: { display: false } } },
     });
     return () => { if (donutChart.current) donutChart.current.destroy(); };
-  }, [summary]);
+  }, [portfolio]);
 
   // Donut chart — Document Health
   useEffect(() => {
     if (!docRef.current) return;
     if (docChart.current) docChart.current.destroy();
     const byStatus = docStats?.byStatus || [];
-    const valid    = byStatus.find(x => x.status === 'valid')?.c    || 215;
-    const expiring = byStatus.find(x => x.status === 'expiring')?.c || 19;
-    const expired  = byStatus.find(x => x.status === 'expired')?.c  || 13;
+    const valid    = byStatus.find(x => x.status === 'valid')?.c    || 0;
+    const expiring = byStatus.find(x => x.status === 'expiring')?.c || 0;
+    const expired  = byStatus.find(x => x.status === 'expired')?.c  || 0;
     docChart.current = new Chart(docRef.current.getContext('2d'), {
       type: 'doughnut',
-      data: { labels: ['Valid', 'Expiring', 'Expired'], datasets: [{ data: [valid, expiring, expired], backgroundColor: [DOC_HEALTH_COLORS.valid, DOC_HEALTH_COLORS.expiring, DOC_HEALTH_COLORS.expired], borderWidth: 0 }] },
+      data: { labels: ['Valid', 'Expiring', 'Expired'], datasets: [{ data: [valid || 1, expiring, expired], backgroundColor: [DOC_HEALTH_COLORS.valid, DOC_HEALTH_COLORS.expiring, DOC_HEALTH_COLORS.expired], borderWidth: 0 }] },
       options: { responsive: true, cutout: '70%', plugins: { legend: { display: false } } },
     });
     return () => { if (docChart.current) docChart.current.destroy(); };
@@ -103,8 +100,9 @@ export default function DashboardPage({ navigate }) {
     if (!barRef.current) return;
     if (barChart.current) barChart.current.destroy();
     const liabs = portfolio?.liabilities || [];
-    const labels = liabs.length ? liabs.map(l => l.name || l.category) : ['Home Loan', 'Car Loan', 'Personal', 'Other'];
-    const values = liabs.length ? liabs.map(l => +(l.balance / 100000).toFixed(1)) : [4.8, 1.9, 0.6, 0.2];
+    if (liabs.length === 0) return;
+    const labels = liabs.map(l => l.name || l.category);
+    const values = liabs.map(l => +(l.balance / 100000).toFixed(1));
     const colors = ['#2563eb', '#d97706', '#059669', '#7c3aed', '#dc2626'];
     barChart.current = new Chart(barRef.current.getContext('2d'), {
       type: 'bar',
@@ -114,25 +112,38 @@ export default function DashboardPage({ navigate }) {
     return () => { if (barChart.current) barChart.current.destroy(); };
   }, [portfolio, loading]);
 
-  const toggleTask = async (task) => {
+  const toggleTask = useCallback(async (task) => {
     const upd = { ...task, is_done: !task.is_done };
     setTasks(ts => ts.map(t => t.id === task.id ? upd : t));
-    await api.put('/tasks/' + task.id, upd).catch(() => {});
-  };
-  const dismissAlert = async (id) => {
+    try {
+      await api.put('/tasks/' + task.id, upd);
+    } catch {
+      // Revert on failure
+      setTasks(ts => ts.map(t => t.id === task.id ? task : t));
+    }
+  }, []);
+
+  const dismissAlert = useCallback(async (id) => {
+    const prev = alerts;
     setAlerts(a => a.filter(x => x.id !== id));
-    await api.put('/alerts/' + id + '/dismiss').catch(() => {});
-  };
+    try {
+      await api.put('/alerts/' + id + '/dismiss');
+    } catch {
+      setAlerts(prev);
+    }
+  }, [alerts]);
 
   const stats   = summary?.stats || {};
   const nw      = stats.netWorth || 0;
   const h       = new Date().getHours();
   const greet   = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
   const byStatus = docStats?.byStatus || [];
-  const docValid    = byStatus.find(x => x.status === 'valid')?.c    || 215;
-  const docExpiring = byStatus.find(x => x.status === 'expiring')?.c || 19;
-  const docExpired  = byStatus.find(x => x.status === 'expired')?.c  || 13;
+  const docValid    = byStatus.find(x => x.status === 'valid')?.c    || 0;
+  const docExpiring = byStatus.find(x => x.status === 'expiring')?.c || 0;
+  const docExpired  = byStatus.find(x => x.status === 'expired')?.c  || 0;
+  const docTotal    = docValid + docExpiring + docExpired;
   const today   = new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  const allocData = portfolio?.allocation || [];
 
   return (
     <div className="page-inner">
@@ -144,29 +155,34 @@ export default function DashboardPage({ navigate }) {
           {greet}, {user?.first_name || 'there'}
         </div>
         <div style={{ fontSize: 13, color: 'var(--txt3)', marginTop: 4 }}>
-          Your family overview is ready. {stats.alerts || 3} alerts need attention.
+          Your family overview is ready. {stats.alertsCount || 0} alerts need attention.
         </div>
       </div>
 
       {/* ── AI INSIGHTS STRIP ── */}
-      <div className="insight-strip">
-        <div className="insight-strip-icon">*</div>
-        <div className="insight-strip-text">
-          <strong>6 AI insights need your attention today</strong>
-          <p>Passport expiring in 47 days &mdash; Property tax due in 12 days &mdash; SIP rebalancing recommended</p>
+      {(stats.expiringCount > 0 || stats.pendingTasks > 0) && (
+        <div className="insight-strip">
+          <div className="insight-strip-icon">*</div>
+          <div className="insight-strip-text">
+            <strong>{stats.expiringCount || 0} documents expiring &mdash; {stats.pendingTasks || 0} pending tasks</strong>
+            <p>Review your vault and calendar for upcoming deadlines</p>
+          </div>
+          <div className="insight-strip-actions">
+            <button className="strip-btn-white" onClick={() => navigate('insights')}>View All</button>
+          </div>
         </div>
-        <div className="insight-strip-actions">
-          <button className="strip-btn-ghost">Dismiss</button>
-          <button className="strip-btn-white" onClick={() => navigate('insights')}>View All</button>
-        </div>
-      </div>
+      )}
+
+      {error && (
+        <div role="alert" style={{ background: 'var(--red-bg)', border: '1px solid var(--red-border)', borderRadius: 8, padding: '10px 14px', marginBottom: 16, color: 'var(--red)', fontSize: 13 }}>{error}</div>
+      )}
 
       {/* ── 2. STAT CARDS ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 16, marginBottom: 24 }}>
-        <StatCard accent="blue"  icon="Rs" iconBg="var(--blue-bg)"  label="Net Worth"    value={loading ? '...' : fmtK(nw)} sub="+Rs.52,400 this month" subUp />
-        <StatCard accent="green" icon="+"  iconBg="var(--green-bg)" label="Total Assets" value={loading ? '...' : fmtK(stats.assets || 0)} sub="Across all classes" />
-        <StatCard accent="red"   icon="-"  iconBg="var(--red-bg)"   label="Liabilities"  value={loading ? '...' : fmtK(stats.liabilities || 0)} sub="Loans and EMIs" subDown />
-        <StatCard accent="amber" icon="#"  iconBg="var(--amber-bg)" label="Documents"    value={stats.documents || 247} sub="3 expiring soon" />
+        <StatCard accent="blue"  icon="Rs" iconBg="var(--blue-bg)"  label="Net Worth"    value={loading ? '...' : fmtK(nw)} sub="Total family net worth" />
+        <StatCard accent="green" icon="+"  iconBg="var(--green-bg)" label="Total Assets" value={loading ? '...' : fmtK(stats.totalAssets || 0)} sub="Across all classes" />
+        <StatCard accent="red"   icon="-"  iconBg="var(--red-bg)"   label="Liabilities"  value={loading ? '...' : fmtK(stats.totalLiabilities || 0)} sub="Loans and EMIs" subDown />
+        <StatCard accent="amber" icon="#"  iconBg="var(--amber-bg)" label="Documents"    value={loading ? '...' : (stats.docsCount || 0)} sub={`${stats.expiringCount || 0} expiring soon`} />
       </div>
 
       {/* ── 3. CHARTS ROW 1: Line chart + Asset Allocation donut ── */}
@@ -176,9 +192,6 @@ export default function DashboardPage({ navigate }) {
             <div>
               <div className="chart-title">Net Worth Performance</div>
               <div className="chart-subtitle">Monthly trend &mdash; last 12 months</div>
-            </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              {['6M','1Y','3Y'].map(p => <button key={p} className="btn btn-xs btn-outline">{p}</button>)}
             </div>
           </div>
           <div style={{ padding: '8px 20px 20px', height: 220 }}><canvas ref={lineRef} /></div>
@@ -200,11 +213,11 @@ export default function DashboardPage({ navigate }) {
                 </div>
               </div>
             </div>
-            {ALLOC.map(a => (
-              <div key={a.name} className="alloc-row">
-                <div className="alloc-dot" style={{ background: a.color }} />
-                <span className="alloc-name">{a.name}</span>
-                <span className="alloc-pct">{a.pct}%</span>
+            {allocData.map((a, i) => (
+              <div key={a.category} className="alloc-row">
+                <div className="alloc-dot" style={{ background: ['#1d4ed8', '#0891b2', '#d97706', '#7c3aed', '#dc2626', '#059669', '#f59e0b'][i % 7] }} />
+                <span className="alloc-name">{a.category.replace('-', ' ')}</span>
+                <span className="alloc-pct">{a.percentage}%</span>
               </div>
             ))}
           </div>
@@ -220,7 +233,7 @@ export default function DashboardPage({ navigate }) {
           <div className="chart-header">
             <div>
               <div className="chart-title">Document Health</div>
-              <div className="chart-subtitle">{(docValid + docExpiring + docExpired)} total documents</div>
+              <div className="chart-subtitle">{docTotal} total documents</div>
             </div>
             <button className="btn btn-xs btn-outline" onClick={() => navigate('documents')}>View All</button>
           </div>
@@ -228,32 +241,20 @@ export default function DashboardPage({ navigate }) {
             <div style={{ position: 'relative', width: 110, height: 110, flexShrink: 0 }}>
               <canvas ref={docRef} />
               <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                <span style={{ fontSize: 18, fontWeight: 700, color: 'var(--txt)' }}>{docValid + docExpiring + docExpired}</span>
+                <span style={{ fontSize: 18, fontWeight: 700, color: 'var(--txt)' }}>{docTotal}</span>
                 <span style={{ fontSize: 10, color: 'var(--txt4)' }}>total</span>
               </div>
             </div>
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: DOC_HEALTH_COLORS.valid }} />
-                  <span style={{ fontSize: 12, color: 'var(--txt2)' }}>Valid</span>
+              {[['Valid', docValid, DOC_HEALTH_COLORS.valid, 'var(--green)'], ['Expiring', docExpiring, DOC_HEALTH_COLORS.expiring, 'var(--amber)'], ['Expired', docExpired, DOC_HEALTH_COLORS.expired, 'var(--red)']].map(([label, count, dotColor, textColor]) => (
+                <div key={label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: dotColor }} />
+                    <span style={{ fontSize: 12, color: 'var(--txt2)' }}>{label}</span>
+                  </div>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: textColor }}>{count}</span>
                 </div>
-                <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--green)' }}>{docValid}</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: DOC_HEALTH_COLORS.expiring }} />
-                  <span style={{ fontSize: 12, color: 'var(--txt2)' }}>Expiring</span>
-                </div>
-                <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--amber)' }}>{docExpiring}</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: DOC_HEALTH_COLORS.expired }} />
-                  <span style={{ fontSize: 12, color: 'var(--txt2)' }}>Expired</span>
-                </div>
-                <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--red)' }}>{docExpired}</span>
-              </div>
+              ))}
             </div>
           </div>
         </div>
@@ -302,12 +303,12 @@ export default function DashboardPage({ navigate }) {
             <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--txt4)', marginBottom: 8 }}>Pending Tasks</div>
             {loading ? (
               <div style={{ fontSize: 12, color: 'var(--txt4)' }}>Loading...</div>
-            ) : tasks.length === 0 ? (
+            ) : tasks.filter(t => !t.is_done).length === 0 ? (
               <div style={{ fontSize: 12, color: 'var(--txt4)' }}>All tasks complete</div>
-            ) : tasks.map(task => (
+            ) : tasks.filter(t => !t.is_done).map(task => (
               <div key={task.id} className="task-item" onClick={() => toggleTask(task)}>
-                <div className={'task-check' + (task.is_done ? ' done' : '')}>{task.is_done ? 'v' : ''}</div>
-                <span className={'task-title' + (task.is_done ? ' done' : '')}>{task.title}</span>
+                <div className="task-check" />
+                <span className="task-title">{task.title}</span>
                 {task.due_date && (
                   <span className="task-due" style={{ color: new Date(task.due_date) < new Date() ? 'var(--red)' : 'var(--txt4)' }}>
                     {fmtDate(task.due_date)}
@@ -322,7 +323,7 @@ export default function DashboardPage({ navigate }) {
         <div className="card">
           <div className="card-header" style={{ paddingBottom: 0 }}>
             <CardHeader
-              title="AI-Generated Tasks & Alerts"
+              title="Recent Alerts"
               action={<button className="btn btn-xs btn-outline" onClick={() => navigate('notifications')}>View All</button>}
             />
           </div>
@@ -331,25 +332,23 @@ export default function DashboardPage({ navigate }) {
               <div style={{ padding: '20px', textAlign: 'center', color: 'var(--txt4)' }}>Loading...</div>
             ) : alerts.length === 0 ? (
               <div style={{ padding: '20px', textAlign: 'center', color: 'var(--txt4)' }}>
-                <div style={{ fontSize: 20, marginBottom: 6 }}>--</div>
                 <div style={{ fontSize: 13 }}>All clear - no urgent alerts</div>
               </div>
             ) : alerts.map(alert => {
               const dotColor = SEV_COLOR[alert.severity] || 'var(--blue)';
-              const bgMap = { critical: 'var(--red-bg)', warning: 'var(--amber-bg)', info: 'var(--blue-bg)', success: 'var(--green-bg)' };
-              const bg = bgMap[alert.severity] || 'var(--blue-bg)';
               return (
-                <div key={alert.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 16px', borderBottom: '1px solid var(--border)', background: 'transparent', transition: 'background .15s', cursor: 'default' }}>
+                <div key={alert.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 16px', borderBottom: '1px solid var(--border)', cursor: 'default' }}>
                   <div style={{ width: 7, height: 7, borderRadius: '50%', background: dotColor, marginTop: 5, flexShrink: 0 }} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--txt)', marginBottom: 2, lineHeight: 1.3 }}>{alert.title}</div>
-                    <div style={{ fontSize: 12, color: 'var(--txt3)', lineHeight: 1.4 }}>{(alert.message || '').slice(0, 80)}{alert.message && alert.message.length > 80 ? '...' : ''}</div>
+                    <div style={{ fontSize: 12, color: 'var(--txt3)', lineHeight: 1.4 }}>{(alert.message || alert.description || '').slice(0, 80)}{(alert.message || alert.description || '').length > 80 ? '...' : ''}</div>
                   </div>
                   <button
                     onClick={() => dismissAlert(alert.id)}
                     style={{ background: 'none', border: 'none', color: 'var(--txt4)', cursor: 'pointer', padding: '0 2px', fontSize: 14, flexShrink: 0, lineHeight: 1 }}
                     title="Dismiss"
-                  >x</button>
+                    aria-label="Dismiss alert"
+                  >&times;</button>
                 </div>
               );
             })}
@@ -358,55 +357,6 @@ export default function DashboardPage({ navigate }) {
                 View All AI Insights
               </button>
             </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ── 6. PENDING TASKS + RECENT ALERTS (data-driven) ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-        <div className="card">
-          <div className="card-header" style={{ paddingBottom: 0 }}>
-            <CardHeader title="Pending Tasks" action={<button className="btn btn-xs btn-blue" onClick={() => navigate('calendar')}>+ Add</button>} />
-          </div>
-          <div style={{ paddingTop: 12 }}>
-            {loading ? (
-              <div style={{ padding: '20px', textAlign: 'center', color: 'var(--txt4)' }}>Loading...</div>
-            ) : tasks.length === 0 ? (
-              <div style={{ padding: '20px', textAlign: 'center', color: 'var(--txt4)' }}>No tasks</div>
-            ) : tasks.map(task => (
-              <div key={task.id} className="task-item" onClick={() => toggleTask(task)}>
-                <div className={'task-check' + (task.is_done ? ' done' : '')}>{task.is_done ? 'v' : ''}</div>
-                <span className={'task-title' + (task.is_done ? ' done' : '')}>{task.title}</span>
-                {task.due_date && (
-                  <span className="task-due" style={{ color: new Date(task.due_date) < new Date() ? 'var(--red)' : 'var(--txt4)' }}>
-                    {fmtDate(task.due_date)}
-                  </span>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="card">
-          <div className="card-header" style={{ paddingBottom: 0 }}>
-            <CardHeader title="Recent Alerts" action={<button className="btn btn-xs btn-outline" onClick={() => navigate('notifications')}>View All</button>} />
-          </div>
-          <div style={{ paddingTop: 12 }}>
-            {alerts.length === 0 ? (
-              <div style={{ padding: '20px', textAlign: 'center', color: 'var(--txt4)' }}>All clear</div>
-            ) : alerts.map(alert => {
-              const c = SEV_COLOR[alert.severity] || 'var(--blue)';
-              return (
-                <div key={alert.id} className="alert-item">
-                  <div className="alert-dot" style={{ background: c }} />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--txt)', marginBottom: 2 }}>{alert.title}</div>
-                    <div style={{ fontSize: 12, color: 'var(--txt3)' }}>{(alert.message || '').slice(0, 60)}...</div>
-                  </div>
-                  <button onClick={e => { e.stopPropagation(); dismissAlert(alert.id); }} style={{ background: 'none', border: 'none', color: 'var(--txt4)', cursor: 'pointer', padding: '0 4px', fontSize: 14 }}>x</button>
-                </div>
-              );
-            })}
           </div>
         </div>
       </div>

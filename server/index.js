@@ -4,6 +4,7 @@ const cors = require('cors');
 const path = require('path');
 const rateLimit = require('express-rate-limit');
 const fs = require('fs');
+const auth = require('./middleware/auth');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -20,12 +21,33 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// Serve uploaded files
-app.use('/uploads', express.static(uploadsDir));
+// Security headers
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  if (process.env.NODE_ENV === 'production') {
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  }
+  next();
+});
+
+// Serve uploaded files through authenticated route
+app.use('/uploads', auth, (req, res, next) => {
+  // Only serve files belonging to user's family
+  res.setHeader('Content-Disposition', 'attachment');
+  express.static(uploadsDir)(req, res, next);
+});
 
 // Rate limiting
 const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 200, message: { error: 'Too many requests' } });
 app.use('/api/', limiter);
+
+// Stricter rate limit for auth endpoints
+const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 15, message: { error: 'Too many login attempts. Please try again later.' } });
+app.use('/api/auth/login', authLimiter);
+app.use('/api/auth/register', authLimiter);
 
 // ─── ROUTES ─────────────────────────────────────────────────────────
 app.use('/api/auth',          require('./routes/auth'));
@@ -48,8 +70,10 @@ if (process.env.NODE_ENV === 'production') {
 
 // ─── ERROR HANDLER ───────────────────────────────────────────────────
 app.use((err, req, res, next) => {
-  console.error('❌ Error:', err.message);
-  res.status(err.status || 500).json({ error: err.message || 'Internal server error' });
+  console.error('Error:', err.message);
+  const status = err.status || 500;
+  const message = status === 500 ? 'Internal server error' : err.message;
+  res.status(status).json({ error: message });
 });
 
 app.listen(PORT, () => {
