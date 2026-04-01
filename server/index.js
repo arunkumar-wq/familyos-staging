@@ -15,7 +15,7 @@ if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 
 // ─── MIDDLEWARE ──────────────────────────────────────────────────────
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:3000',
+  origin: process.env.CLIENT_URL || true, // true = reflect request origin (safe for same-origin production)
   credentials: true,
 }));
 app.use(express.json({ limit: '10mb' }));

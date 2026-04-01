@@ -35,15 +35,13 @@ export default function LoginPage() {
             {loading?'Signing in...':'Sign In'}
           </button>
         </form>
-        {process.env.NODE_ENV !== 'production' && (
-          <div style={{marginTop:20,padding:16,background:'var(--surface2)',borderRadius:'var(--r-md)',border:'1px solid var(--border)'}}>
-            <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'.06em',color:'var(--brand)',marginBottom:8}}>Demo Credentials</div>
-            <div style={{fontSize:12,color:'var(--txt2)',lineHeight:1.7}}>
-              <div>Email: arun@familyos.ai</div>
-              <div>Password: password123</div>
-            </div>
+        <div style={{marginTop:20,padding:16,background:'var(--surface2)',borderRadius:'var(--r-md)',border:'1px solid var(--border)'}}>
+          <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'.06em',color:'var(--brand)',marginBottom:8}}>Demo Credentials</div>
+          <div style={{fontSize:12,color:'var(--txt2)',lineHeight:1.7}}>
+            <div>Email: arun@familyos.ai</div>
+            <div>Password: password123</div>
           </div>
-        )}
+        </div>
       </div>
     </div>
   );
