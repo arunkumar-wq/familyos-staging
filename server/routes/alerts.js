@@ -5,14 +5,22 @@ const auth = require('../middleware/auth');
 
 const router = express.Router();
 
+// Map DB 'type' to frontend 'severity' for consistency
+const TYPE_TO_SEVERITY = { urgent: 'critical', warning: 'warning', info: 'info', success: 'success' };
+
+function mapAlert(a) {
+  return { ...a, severity: TYPE_TO_SEVERITY[a.type] || a.type };
+}
+
 // GET /api/alerts
 router.get('/', auth, (req, res) => {
   try {
     const db = getDb();
     const alerts = db.prepare(`SELECT * FROM alerts WHERE family_id=? AND is_dismissed=0 ORDER BY created_at DESC`).all(req.user.family_id);
-    res.json(alerts);
+    res.json(alerts.map(mapAlert));
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('GET /alerts error:', err.message);
+    res.status(500).json({ error: 'Failed to load alerts' });
   }
 });
 
@@ -23,7 +31,7 @@ router.put('/:id/read', auth, (req, res) => {
     db.prepare(`UPDATE alerts SET is_read=1 WHERE id=? AND family_id=?`).run(req.params.id, req.user.family_id);
     res.json({ success: true });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Failed to mark alert as read' });
   }
 });
 
@@ -34,7 +42,7 @@ router.put('/:id/dismiss', auth, (req, res) => {
     db.prepare(`UPDATE alerts SET is_dismissed=1 WHERE id=? AND family_id=?`).run(req.params.id, req.user.family_id);
     res.json({ success: true });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Failed to dismiss alert' });
   }
 });
 
@@ -45,7 +53,7 @@ router.put('/read-all', auth, (req, res) => {
     db.prepare(`UPDATE alerts SET is_read=1 WHERE family_id=?`).run(req.user.family_id);
     res.json({ success: true });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Failed to mark all as read' });
   }
 });
 
