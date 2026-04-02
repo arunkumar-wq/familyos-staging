@@ -12,7 +12,7 @@ export default function CalendarPage() {
   const now = new Date();
   const year = now.getFullYear();
   const month = now.getMonth();
-  const monthName = now.toLocaleDateString('en-IN',{month:'long',year:'numeric'});
+  const monthName = now.toLocaleDateString('en-US',{month:'long',year:'numeric'});
 
   useEffect(() => {
     api.get('/tasks')

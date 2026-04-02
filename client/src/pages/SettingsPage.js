@@ -59,7 +59,7 @@ export default function SettingsPage({ navigate }) {
       <PageHeader title="Settings" sub="Manage your account and preferences" />
       <div style={{ display:'grid', gridTemplateColumns:'200px 1fr', gap:20 }}>
         <div className="card" style={{ padding:10, alignSelf:'start' }}>
-          <div style={{ padding:'8px 10px 4px', fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'.08em', color:'var(--brand)' }}>Account</div>
+          <div style={{ padding:'8px 10px 4px', fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'.08em', color:'var(--accent)' }}>Account</div>
           {TABS.map(t => (<button key={t} className={'settings-tab'+(tab===t?' active':'')} onClick={() => setTab(t)}>{t}</button>))}
           <div className="divider" />
           <button className="settings-tab" onClick={logout} style={{ color:'var(--red)' }}>Sign Out</button>
@@ -71,7 +71,7 @@ export default function SettingsPage({ navigate }) {
               <div className="sec-bar sec-bar-teal">Profile Information</div>
               <div style={{ padding:20 }}>
                 <div style={{ display:'flex', alignItems:'center', gap:18, marginBottom:22 }}>
-                  <div className="avatar" style={{ width:68, height:68, background:user?.avatar_color||'var(--brand)', fontSize:22 }}>{(user?.first_name?.[0]||'')+(user?.last_name?.[0]||'')}</div>
+                  <div className="avatar" style={{ width:68, height:68, background:user?.avatar_color||'var(--accent)', fontSize:22 }}>{(user?.first_name?.[0]||'')+(user?.last_name?.[0]||'')}</div>
                   <div>
                     <div style={{ fontSize:17, fontWeight:700 }}>{user?.first_name} {user?.last_name}</div>
                     <div style={{ fontSize:13, color:'var(--txt3)', marginTop:2 }}>{user?.email}</div>
@@ -131,7 +131,7 @@ export default function SettingsPage({ navigate }) {
                     <div><div style={{ fontSize:14, fontWeight:500 }}>{t}</div><div style={{ fontSize:12, color:'var(--txt3)', marginTop:2 }}>{d}</div></div>
                     <label style={{ position: 'relative', display: 'inline-block', width: 42, height: 22, cursor: 'pointer' }}>
                       <input type="checkbox" checked={notifPrefs[key]} onChange={() => toggleNotif(key)} style={{ opacity: 0, width: 0, height: 0 }} aria-label={t} />
-                      <span style={{ position:'absolute', inset:0, background: notifPrefs[key] ? 'var(--brand)' : 'var(--border2)', borderRadius:11, transition:'background .2s' }}>
+                      <span style={{ position:'absolute', inset:0, background: notifPrefs[key] ? 'var(--accent)' : 'var(--border2)', borderRadius:11, transition:'background .2s' }}>
                         <span style={{ position:'absolute', width:16, height:16, borderRadius:'50%', background:'#fff', top:3, transition:'left .2s', left: notifPrefs[key] ? 23 : 3 }} />
                       </span>
                     </label>
@@ -157,10 +157,10 @@ export default function SettingsPage({ navigate }) {
             <div className="card" style={{ overflow:'hidden' }}>
               <div className="sec-bar sec-bar-teal">Billing and Plan</div>
               <div style={{ padding:20 }}>
-                <div style={{ background:'var(--brand-light)', border:'1px solid var(--teal-border)', borderRadius:'var(--r-lg)', padding:18, marginBottom:18 }}>
-                  <div style={{ fontSize:15, fontWeight:700, color:'var(--brand)', marginBottom:4 }}>FamilyOS Pro</div>
+                <div style={{ background:'var(--accent-light)', border:'1px solid var(--teal-border)', borderRadius:'var(--r-lg)', padding:18, marginBottom:18 }}>
+                  <div style={{ fontSize:15, fontWeight:700, color:'var(--accent)', marginBottom:4 }}>FamilyOS Pro</div>
                   <div style={{ fontSize:13, color:'var(--txt2)', marginBottom:10 }}>Unlimited documents, AI insights, 10 family members</div>
-                  <div style={{ fontSize:22, fontWeight:700, color:'var(--txt)' }}>Rs.999<span style={{ fontSize:13, fontWeight:400, color:'var(--txt3)' }}>/month</span></div>
+                  <div style={{ fontSize:22, fontWeight:700, color:'var(--txt)' }}>$9.99<span style={{ fontSize:13, fontWeight:400, color:'var(--txt3)' }}>/month</span></div>
                 </div>
                 <div style={{ fontSize:13, color:'var(--txt3)' }}>Billing is managed through your subscription provider.</div>
               </div>

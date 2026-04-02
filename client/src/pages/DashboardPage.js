@@ -2,29 +2,27 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Chart, registerables } from 'chart.js';
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
-import { fmtINR, fmtK, fmtDate } from '../utils/formatters';
-import { StatCard, CardHeader } from '../components/UI';
+import { fmtK, fmtDate, fmtDateFull } from '../utils/formatters';
 
 Chart.register(...registerables);
 
-const DOC_HEALTH_COLORS = { valid: '#059669', expiring: '#d97706', expired: '#dc2626' };
-const SEV_COLOR = { critical: 'var(--red)', warning: 'var(--amber)', info: 'var(--blue)', success: 'var(--green)' };
-const MEMBER_COLORS = ['#0891b2', '#059669', '#d97706', '#7c3aed', '#dc2626', '#2563eb'];
+const SEV_STYLES = {
+  critical: { bg: '#dc2626', label: 'High' },
+  warning:  { bg: '#d97706', label: 'Med' },
+  info:     { bg: '#0a9e9e', label: 'Info' },
+  success:  { bg: '#059669', label: 'AI' },
+};
 
 export default function DashboardPage({ navigate }) {
   const { user } = useAuth();
-  const [summary, setSummary]   = useState(null);
-  const [tasks,   setTasks]     = useState([]);
-  const [alerts,  setAlerts]    = useState([]);
-  const [members, setMembers]   = useState([]);
-  const [docStats, setDocStats] = useState(null);
+  const [summary, setSummary] = useState(null);
+  const [tasks, setTasks] = useState([]);
+  const [alerts, setAlerts] = useState([]);
+  const [members, setMembers] = useState([]);
   const [portfolio, setPortfolio] = useState(null);
-  const [loading,   setLoading] = useState(true);
-  const [error,     setError]   = useState('');
-  const lineRef  = useRef(); const lineChart  = useRef();
+  const [loading, setLoading] = useState(true);
+  const lineRef = useRef(); const lineChart = useRef();
   const donutRef = useRef(); const donutChart = useRef();
-  const docRef   = useRef(); const docChart   = useRef();
-  const barRef   = useRef(); const barChart   = useRef();
 
   useEffect(() => {
     Promise.all([
@@ -32,335 +30,192 @@ export default function DashboardPage({ navigate }) {
       api.get('/tasks'),
       api.get('/alerts'),
       api.get('/family/members'),
-      api.get('/documents/stats').catch(() => ({ data: null })),
       api.get('/portfolio/summary').catch(() => ({ data: null })),
-    ]).then(([s, t, a, m, ds, pf]) => {
+    ]).then(([s, t, a, m, pf]) => {
       setSummary(s.data);
       setTasks(t.data.slice(0, 5));
       setAlerts(a.data.filter(x => !x.is_read).slice(0, 5));
-      setMembers(m.data.slice(0, 6));
-      setDocStats(ds.data);
+      setMembers(m.data.slice(0, 5));
       setPortfolio(pf.data);
-    }).catch(err => {
-      console.error('Dashboard load error:', err);
-      setError('Failed to load dashboard data');
-    }).finally(() => setLoading(false));
+    }).catch(console.error).finally(() => setLoading(false));
   }, []);
 
-  // Line chart — Net Worth trend
+  // Portfolio Performance Line Chart
   useEffect(() => {
     if (!summary?.snapshots?.length || !lineRef.current) return;
     if (lineChart.current) lineChart.current.destroy();
-    const ctx  = lineRef.current.getContext('2d');
-    const grad = ctx.createLinearGradient(0, 0, 0, 200);
-    grad.addColorStop(0, 'rgba(37,99,235,.15)');
-    grad.addColorStop(1, 'rgba(37,99,235,0)');
+    const ctx = lineRef.current.getContext('2d');
+    const grad = ctx.createLinearGradient(0, 0, 0, 220);
+    grad.addColorStop(0, 'rgba(10,158,158,.12)');
+    grad.addColorStop(1, 'rgba(10,158,158,0)');
     lineChart.current = new Chart(ctx, {
       type: 'line',
       data: {
-        labels: summary.snapshots.map(s => new Date(s.snapshot_date).toLocaleDateString('en-IN', { month: 'short' })),
-        datasets: [{ data: summary.snapshots.map(s => +(s.net_worth / 100000).toFixed(1)), borderColor: '#2563eb', backgroundColor: grad, fill: true, tension: 0.4, pointRadius: 4, pointBackgroundColor: '#2563eb', pointBorderColor: '#fff', pointBorderWidth: 2, borderWidth: 2.5 }],
+        labels: summary.snapshots.map(s => new Date(s.snapshot_date).toLocaleDateString('en-US', { month: 'short' })),
+        datasets: [{
+          data: summary.snapshots.map(s => s.net_worth),
+          borderColor: '#0a9e9e', backgroundColor: grad, fill: true, tension: 0.4,
+          pointRadius: 3, pointBackgroundColor: '#0a9e9e', pointBorderColor: '#fff', pointBorderWidth: 2, borderWidth: 2.5
+        }],
       },
-      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false }, ticks: { font: { size: 11 }, color: '#94a3b8' } }, y: { grid: { color: 'rgba(0,0,0,.04)' }, ticks: { font: { size: 11 }, color: '#94a3b8', callback: v => 'Rs.' + v + 'L' } } } },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => fmtK(ctx.raw) } } },
+        scales: {
+          x: { grid: { display: false }, ticks: { font: { size: 11 }, color: '#9ca3af' } },
+          y: { grid: { color: 'rgba(0,0,0,.04)' }, ticks: { font: { size: 11 }, color: '#9ca3af', callback: v => fmtK(v) } }
+        }
+      },
     });
     return () => { if (lineChart.current) lineChart.current.destroy(); };
   }, [summary]);
 
-  // Donut chart — Asset Allocation (from real portfolio data)
+  // Asset Allocation Donut
   useEffect(() => {
     if (!donutRef.current || !portfolio?.allocation?.length) return;
     if (donutChart.current) donutChart.current.destroy();
     const alloc = portfolio.allocation;
+    const colors = ['#3883f6', '#1e429f', '#059669', '#d97706', '#6b7280'];
     donutChart.current = new Chart(donutRef.current.getContext('2d'), {
       type: 'doughnut',
-      data: { labels: alloc.map(a => a.category), datasets: [{ data: alloc.map(a => +a.percentage), backgroundColor: ['#1d4ed8', '#0891b2', '#d97706', '#7c3aed', '#dc2626', '#059669', '#f59e0b'].slice(0, alloc.length), borderWidth: 0, hoverOffset: 4 }] },
-      options: { responsive: true, cutout: '72%', plugins: { legend: { display: false } } },
+      data: { labels: alloc.map(a => a.category.replace('-',' ')), datasets: [{ data: alloc.map(a => +a.percentage), backgroundColor: colors.slice(0, alloc.length), borderWidth: 0 }] },
+      options: { responsive: true, cutout: '68%', plugins: { legend: { display: false } } },
     });
     return () => { if (donutChart.current) donutChart.current.destroy(); };
   }, [portfolio]);
 
-  // Donut chart — Document Health
-  useEffect(() => {
-    if (!docRef.current) return;
-    if (docChart.current) docChart.current.destroy();
-    const byStatus = docStats?.byStatus || [];
-    const valid    = byStatus.find(x => x.status === 'valid')?.c    || 0;
-    const expiring = byStatus.find(x => x.status === 'expiring')?.c || 0;
-    const expired  = byStatus.find(x => x.status === 'expired')?.c  || 0;
-    docChart.current = new Chart(docRef.current.getContext('2d'), {
-      type: 'doughnut',
-      data: { labels: ['Valid', 'Expiring', 'Expired'], datasets: [{ data: [valid || 1, expiring, expired], backgroundColor: [DOC_HEALTH_COLORS.valid, DOC_HEALTH_COLORS.expiring, DOC_HEALTH_COLORS.expired], borderWidth: 0 }] },
-      options: { responsive: true, cutout: '70%', plugins: { legend: { display: false } } },
-    });
-    return () => { if (docChart.current) docChart.current.destroy(); };
-  }, [docStats, loading]);
-
-  // Bar chart — Liability Breakdown
-  useEffect(() => {
-    if (!barRef.current) return;
-    if (barChart.current) barChart.current.destroy();
-    const liabs = portfolio?.liabilities || [];
-    if (liabs.length === 0) return;
-    const labels = liabs.map(l => l.name || l.category);
-    const values = liabs.map(l => +(l.balance / 100000).toFixed(1));
-    const colors = ['#2563eb', '#d97706', '#059669', '#7c3aed', '#dc2626'];
-    barChart.current = new Chart(barRef.current.getContext('2d'), {
-      type: 'bar',
-      data: { labels, datasets: [{ data: values, backgroundColor: colors.slice(0, labels.length), borderRadius: 4, borderWidth: 0 }] },
-      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false }, ticks: { font: { size: 11 }, color: '#94a3b8' } }, y: { grid: { color: 'rgba(0,0,0,.04)' }, ticks: { font: { size: 11 }, color: '#94a3b8', callback: v => v + 'L' } } } },
-    });
-    return () => { if (barChart.current) barChart.current.destroy(); };
-  }, [portfolio, loading]);
-
-  const toggleTask = useCallback(async (task) => {
-    const upd = { ...task, is_done: !task.is_done };
-    setTasks(ts => ts.map(t => t.id === task.id ? upd : t));
-    try {
-      await api.put('/tasks/' + task.id, upd);
-    } catch {
-      // Revert on failure
-      setTasks(ts => ts.map(t => t.id === task.id ? task : t));
-    }
-  }, []);
-
-  const dismissAlert = useCallback(async (id) => {
-    const prev = alerts;
-    setAlerts(a => a.filter(x => x.id !== id));
-    try {
-      await api.put('/alerts/' + id + '/dismiss');
-    } catch {
-      setAlerts(prev);
-    }
-  }, [alerts]);
-
-  const stats   = summary?.stats || {};
-  const nw      = stats.netWorth || 0;
-  const h       = new Date().getHours();
-  const greet   = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
-  const byStatus = docStats?.byStatus || [];
-  const docValid    = byStatus.find(x => x.status === 'valid')?.c    || 0;
-  const docExpiring = byStatus.find(x => x.status === 'expiring')?.c || 0;
-  const docExpired  = byStatus.find(x => x.status === 'expired')?.c  || 0;
-  const docTotal    = docValid + docExpiring + docExpired;
-  const today   = new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  const stats = summary?.stats || {};
+  const nw = stats.netWorth || 0;
+  const h = new Date().getHours();
+  const greet = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
   const allocData = portfolio?.allocation || [];
+  const allocColors = ['#3883f6', '#1e429f', '#059669', '#d97706', '#6b7280'];
 
   return (
     <div className="page-inner">
-
-      {/* ── 1. GREETING SECTION ── */}
-      <div style={{ marginBottom: 20 }}>
-        <div style={{ fontSize: 13, color: 'var(--txt3)', marginBottom: 4 }}>{today}</div>
-        <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--txt)', lineHeight: 1.2 }}>
+      {/* Greeting */}
+      <div style={{ marginBottom: 24 }}>
+        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 800, color: 'var(--txt)' }}>
           {greet}, {user?.first_name || 'there'}
+        </h1>
+        <p style={{ fontSize: 14, color: 'var(--txt3)', marginTop: 4 }}>
+          Your family overview for {fmtDateFull(new Date())}
+        </p>
+      </div>
+
+      {/* Stat Cards Row */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 24 }}>
+        <div className="card stat-card">
+          <div className="stat-card-label">Total Net Worth</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div className="stat-card-value">{loading ? '...' : fmtK(nw)}</div>
+            <span className="badge badge-green" style={{fontSize:11}}>+5.3%</span>
+          </div>
+          <div className="stat-card-sub up">&#8593; $142K vs last quarter</div>
         </div>
-        <div style={{ fontSize: 13, color: 'var(--txt3)', marginTop: 4 }}>
-          Your family overview is ready. {stats.alertsCount || 0} alerts need attention.
+        <div className="card stat-card">
+          <div className="stat-card-label">Documents</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div className="stat-card-value">{loading ? '...' : stats.docsCount || 0}</div>
+            <span className="badge badge-amber" style={{fontSize:11}}>{stats.expiringCount || 0} expiring</span>
+          </div>
+          <div className="stat-card-sub">Across 12 categories</div>
+        </div>
+        <div className="card stat-card">
+          <div className="stat-card-label">Family Members</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div className="stat-card-value">{loading ? '...' : stats.membersCount || 0}</div>
+            <span className="badge badge-green" style={{fontSize:11}}>Active</span>
+          </div>
+          <div className="stat-card-sub">All access verified</div>
+        </div>
+        <div className="card stat-card">
+          <div className="stat-card-label">AI Alerts</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div className="stat-card-value">{loading ? '...' : stats.alertsCount || 0}</div>
+            {alerts.filter(a=>a.severity==='critical').length > 0 && (
+              <span className="badge badge-red" style={{fontSize:11}}>{alerts.filter(a=>a.severity==='critical').length} urgent</span>
+            )}
+          </div>
+          <div className="stat-card-sub">Action required</div>
         </div>
       </div>
 
-      {/* ── AI INSIGHTS STRIP ── */}
-      {(stats.expiringCount > 0 || stats.pendingTasks > 0) && (
-        <div className="insight-strip">
-          <div className="insight-strip-icon">*</div>
-          <div className="insight-strip-text">
-            <strong>{stats.expiringCount || 0} documents expiring &mdash; {stats.pendingTasks || 0} pending tasks</strong>
-            <p>Review your vault and calendar for upcoming deadlines</p>
-          </div>
-          <div className="insight-strip-actions">
-            <button className="strip-btn-white" onClick={() => navigate('insights')}>View All</button>
-          </div>
-        </div>
-      )}
-
-      {error && (
-        <div role="alert" style={{ background: 'var(--red-bg)', border: '1px solid var(--red-border)', borderRadius: 8, padding: '10px 14px', marginBottom: 16, color: 'var(--red)', fontSize: 13 }}>{error}</div>
-      )}
-
-      {/* ── 2. STAT CARDS ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 16, marginBottom: 24 }}>
-        <StatCard accent="blue"  icon="Rs" iconBg="var(--blue-bg)"  label="Net Worth"    value={loading ? '...' : fmtK(nw)} sub="Total family net worth" />
-        <StatCard accent="green" icon="+"  iconBg="var(--green-bg)" label="Total Assets" value={loading ? '...' : fmtK(stats.totalAssets || 0)} sub="Across all classes" />
-        <StatCard accent="red"   icon="-"  iconBg="var(--red-bg)"   label="Liabilities"  value={loading ? '...' : fmtK(stats.totalLiabilities || 0)} sub="Loans and EMIs" subDown />
-        <StatCard accent="amber" icon="#"  iconBg="var(--amber-bg)" label="Documents"    value={loading ? '...' : (stats.docsCount || 0)} sub={`${stats.expiringCount || 0} expiring soon`} />
-      </div>
-
-      {/* ── 3. CHARTS ROW 1: Line chart + Asset Allocation donut ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 16, marginBottom: 16 }}>
-        <div className="card card-blue">
-          <div className="chart-header">
-            <div>
-              <div className="chart-title">Net Worth Performance</div>
-              <div className="chart-subtitle">Monthly trend &mdash; last 12 months</div>
-            </div>
-          </div>
-          <div style={{ padding: '8px 20px 20px', height: 220 }}><canvas ref={lineRef} /></div>
-        </div>
+      {/* Charts + Alerts Row */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+        {/* Portfolio Performance */}
         <div className="card">
-          <div className="chart-header">
-            <div>
-              <div className="chart-title">Asset Allocation</div>
-              <div className="chart-subtitle">Portfolio breakdown</div>
-            </div>
+          <div style={{ padding: '18px 20px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div className="section-label">Portfolio Performance</div>
+            <select style={{ border: '1px solid var(--border)', borderRadius: 'var(--r-sm)', padding: '4px 8px', fontSize: 12, background: 'var(--surface)', color: 'var(--txt2)' }}>
+              <option>Net Worth</option>
+            </select>
           </div>
-          <div style={{ padding: '0 20px', display: 'flex', flexDirection: 'column' }}>
-            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
-              <div style={{ position: 'relative', width: 120, height: 120 }}>
-                <canvas ref={donutRef} />
-                <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                  <span style={{ fontSize: 11, color: 'var(--txt4)', fontWeight: 600 }}>TOTAL</span>
-                  <span style={{ fontSize: 14, fontWeight: 700 }}>{fmtK(nw)}</span>
+          <div style={{ padding: '0 20px 20px', height: 240 }}><canvas ref={lineRef} /></div>
+        </div>
+
+        {/* AI Alerts Grid */}
+        <div className="card">
+          <div style={{ padding: '18px 20px 14px' }}>
+            <div className="section-label">AI-Generated Tasks &amp; Alerts</div>
+          </div>
+          <div style={{ padding: '0 16px 16px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            {alerts.slice(0, 4).map((a) => {
+              const sev = SEV_STYLES[a.severity] || SEV_STYLES.info;
+              return (
+                <div key={a.id} className="ai-alert-card" style={{ background: sev.bg, color: '#fff' }}>
+                  <div className="alert-severity">{sev.label}</div>
+                  <div className="ai-alert-card-title">{a.title}</div>
+                  <div className="ai-alert-card-body">{a.title}</div>
                 </div>
-              </div>
-            </div>
-            {allocData.map((a, i) => (
-              <div key={a.category} className="alloc-row">
-                <div className="alloc-dot" style={{ background: ['#1d4ed8', '#0891b2', '#d97706', '#7c3aed', '#dc2626', '#059669', '#f59e0b'][i % 7] }} />
-                <span className="alloc-name">{a.category.replace('-', ' ')}</span>
-                <span className="alloc-pct">{a.percentage}%</span>
+              );
+            })}
+            {tasks.filter(t => !t.is_done).slice(0, 1).map(t => (
+              <div key={t.id} className="ai-alert-card" style={{ background: 'var(--surface2)', color: 'var(--txt)', border: '1px solid var(--border)' }}>
+                <div className="alert-severity" style={{ background: 'var(--border)' }}>Todo</div>
+                <div className="ai-alert-card-title">{t.title}</div>
+                <div className="ai-alert-card-body">{t.title}</div>
               </div>
             ))}
           </div>
-          <div style={{ padding: '0 0 16px' }} />
         </div>
       </div>
 
-      {/* ── 4. CHARTS ROW 2: Document Health donut + Liability Breakdown bar ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
-
-        {/* Document Health */}
+      {/* Allocation + Family Row */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+        {/* Asset Allocation */}
         <div className="card">
-          <div className="chart-header">
-            <div>
-              <div className="chart-title">Document Health</div>
-              <div className="chart-subtitle">{docTotal} total documents</div>
-            </div>
-            <button className="btn btn-xs btn-outline" onClick={() => navigate('documents')}>View All</button>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 20, padding: '12px 20px 20px' }}>
-            <div style={{ position: 'relative', width: 110, height: 110, flexShrink: 0 }}>
-              <canvas ref={docRef} />
-              <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                <span style={{ fontSize: 18, fontWeight: 700, color: 'var(--txt)' }}>{docTotal}</span>
-                <span style={{ fontSize: 10, color: 'var(--txt4)' }}>total</span>
-              </div>
-            </div>
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {[['Valid', docValid, DOC_HEALTH_COLORS.valid, 'var(--green)'], ['Expiring', docExpiring, DOC_HEALTH_COLORS.expiring, 'var(--amber)'], ['Expired', docExpired, DOC_HEALTH_COLORS.expired, 'var(--red)']].map(([label, count, dotColor, textColor]) => (
-                <div key={label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: dotColor }} />
-                    <span style={{ fontSize: 12, color: 'var(--txt2)' }}>{label}</span>
-                  </div>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: textColor }}>{count}</span>
+          <div style={{ padding: '18px 20px 14px' }}><div className="section-label">Asset Allocation</div></div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 24, padding: '0 20px 20px' }}>
+            <div style={{ width: 120, height: 120, flexShrink: 0 }}><canvas ref={donutRef} /></div>
+            <div style={{ flex: 1 }}>
+              {allocData.map((a, i) => (
+                <div key={a.category} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                  <div style={{ width: 10, height: 10, borderRadius: 2, background: allocColors[i % allocColors.length], flexShrink: 0 }} />
+                  <span style={{ flex: 1, fontSize: 13, color: 'var(--txt2)', textTransform: 'capitalize' }}>{a.category.replace('-', ' ')}</span>
+                  <span style={{ fontSize: 13, fontWeight: 700 }}>{a.percentage}%</span>
                 </div>
               ))}
             </div>
           </div>
         </div>
 
-        {/* Liability Breakdown */}
+        {/* Family Members */}
         <div className="card">
-          <div className="chart-header">
-            <div>
-              <div className="chart-title">Liability Breakdown</div>
-              <div className="chart-subtitle">Outstanding loans by type</div>
-            </div>
-            <button className="btn btn-xs btn-outline" onClick={() => navigate('portfolio')}>View All</button>
-          </div>
-          <div style={{ padding: '8px 20px 20px', height: 170 }}>
-            <canvas ref={barRef} />
-          </div>
-        </div>
-      </div>
-
-      {/* ── 5. FAMILY MEMBERS & TASKS + AI ALERTS ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
-
-        {/* Family Members & Pending Tasks */}
-        <div className="card">
-          <div className="card-header" style={{ paddingBottom: 0 }}>
-            <CardHeader
-              title="Family Members"
-              action={<button className="btn btn-xs btn-outline" onClick={() => navigate('family')}>View All</button>}
-            />
-          </div>
-          <div style={{ padding: '12px 16px 0', display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-            {loading ? (
-              <div style={{ fontSize: 12, color: 'var(--txt4)', padding: '4px 0' }}>Loading...</div>
-            ) : members.length === 0 ? (
-              <div style={{ fontSize: 12, color: 'var(--txt4)' }}>No members yet</div>
-            ) : members.map((m, i) => (
-              <div key={m.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                <div style={{ width: 36, height: 36, borderRadius: '50%', background: m.avatar_color || MEMBER_COLORS[i % MEMBER_COLORS.length], display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: '#fff', cursor: 'pointer', flexShrink: 0 }} onClick={() => navigate('family')}>
-                  {((m.first_name || '')[0] || '') + ((m.last_name || '')[0] || '')}
+          <div style={{ padding: '18px 20px 14px' }}><div className="section-label">Family Members</div></div>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 20, padding: '0 20px 24px', flexWrap: 'wrap' }}>
+            {members.map(m => (
+              <div key={m.id} style={{ textAlign: 'center', cursor: 'pointer' }} onClick={() => navigate('family')}>
+                <div className="avatar" style={{ width: 52, height: 52, background: m.avatar_color || '#1a3a5c', fontSize: 16, margin: '0 auto 8px' }}>
+                  {((m.first_name||'')[0]||'')+((m.last_name||'')[0]||'')}
                 </div>
-                <span style={{ fontSize: 10, color: 'var(--txt3)', maxWidth: 40, textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.first_name}</span>
-              </div>
-            ))}
-          </div>
-          <div style={{ borderTop: '1px solid var(--border)', margin: '12px 0 0', padding: '10px 16px 14px' }}>
-            <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--txt4)', marginBottom: 8 }}>Pending Tasks</div>
-            {loading ? (
-              <div style={{ fontSize: 12, color: 'var(--txt4)' }}>Loading...</div>
-            ) : tasks.filter(t => !t.is_done).length === 0 ? (
-              <div style={{ fontSize: 12, color: 'var(--txt4)' }}>All tasks complete</div>
-            ) : tasks.filter(t => !t.is_done).map(task => (
-              <div key={task.id} className="task-item" onClick={() => toggleTask(task)}>
-                <div className="task-check" />
-                <span className="task-title">{task.title}</span>
-                {task.due_date && (
-                  <span className="task-due" style={{ color: new Date(task.due_date) < new Date() ? 'var(--red)' : 'var(--txt4)' }}>
-                    {fmtDate(task.due_date)}
-                  </span>
-                )}
+                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--txt)' }}>{m.first_name}</div>
+                <div style={{ fontSize: 11, color: 'var(--txt4)', textTransform: 'capitalize' }}>{m.role === 'admin' ? 'Owner' : m.role}</div>
               </div>
             ))}
           </div>
         </div>
-
-        {/* AI-Generated Tasks & Alerts */}
-        <div className="card">
-          <div className="card-header" style={{ paddingBottom: 0 }}>
-            <CardHeader
-              title="Recent Alerts"
-              action={<button className="btn btn-xs btn-outline" onClick={() => navigate('notifications')}>View All</button>}
-            />
-          </div>
-          <div style={{ paddingTop: 8 }}>
-            {loading ? (
-              <div style={{ padding: '20px', textAlign: 'center', color: 'var(--txt4)' }}>Loading...</div>
-            ) : alerts.length === 0 ? (
-              <div style={{ padding: '20px', textAlign: 'center', color: 'var(--txt4)' }}>
-                <div style={{ fontSize: 13 }}>All clear - no urgent alerts</div>
-              </div>
-            ) : alerts.map(alert => {
-              const dotColor = SEV_COLOR[alert.severity] || 'var(--blue)';
-              return (
-                <div key={alert.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 16px', borderBottom: '1px solid var(--border)', cursor: 'default' }}>
-                  <div style={{ width: 7, height: 7, borderRadius: '50%', background: dotColor, marginTop: 5, flexShrink: 0 }} />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--txt)', marginBottom: 2, lineHeight: 1.3 }}>{alert.title}</div>
-                    <div style={{ fontSize: 12, color: 'var(--txt3)', lineHeight: 1.4 }}>{(alert.message || alert.description || '').slice(0, 80)}{(alert.message || alert.description || '').length > 80 ? '...' : ''}</div>
-                  </div>
-                  <button
-                    onClick={() => dismissAlert(alert.id)}
-                    style={{ background: 'none', border: 'none', color: 'var(--txt4)', cursor: 'pointer', padding: '0 2px', fontSize: 14, flexShrink: 0, lineHeight: 1 }}
-                    title="Dismiss"
-                    aria-label="Dismiss alert"
-                  >&times;</button>
-                </div>
-              );
-            })}
-            <div style={{ padding: '10px 16px', borderTop: alerts.length ? 'none' : '1px solid var(--border)' }}>
-              <button className="btn btn-outline btn-sm" style={{ width: '100%' }} onClick={() => navigate('insights')}>
-                View All AI Insights
-              </button>
-            </div>
-          </div>
-        </div>
       </div>
-
     </div>
   );
 }

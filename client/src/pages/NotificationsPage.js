@@ -3,10 +3,10 @@ import api from '../utils/api';
 import { PageHeader, Badge } from '../components/UI';
 import { fmtDate } from '../utils/formatters';
 const SEV_COLOR = { critical:'red', warning:'amber', info:'blue', success:'green' };
-const SEV_DOT = { critical:'var(--red)', warning:'var(--amber)', info:'var(--brand)', success:'var(--green)' };
+const SEV_DOT = { critical:'var(--red)', warning:'var(--amber)', info:'var(--accent)', success:'var(--green)' };
 function FilterBtn({ label, active, onClick }) {
   return (
-    <button onClick={onClick} style={{ height:30, padding:'0 14px', borderRadius:'var(--r-full)', fontSize:12, fontWeight:600, border:active?'1.5px solid var(--brand)':'1.5px solid var(--border)', background:active?'var(--brand)':'var(--surface)', color:active?'#fff':'var(--txt2)', cursor:'pointer', fontFamily:'inherit' }}>
+    <button onClick={onClick} style={{ height:30, padding:'0 14px', borderRadius:'var(--r-full)', fontSize:12, fontWeight:600, border:active?'1.5px solid var(--accent)':'1.5px solid var(--border)', background:active?'var(--accent)':'var(--surface)', color:active?'#fff':'var(--txt2)', cursor:'pointer', fontFamily:'inherit' }}>
       {label}
     </button>
   );
@@ -71,7 +71,7 @@ export default function NotificationsPage() {
           <div style={{ padding:40, textAlign:'center', color:'var(--txt3)' }}>All clear!</div>
         ) : filtered.map(a => (
           <div key={a.id} className={'alert-item'+(a.is_read?' read':'')} onClick={() => !a.is_read&&dismiss(a.id)}>
-            <div className="alert-dot" style={{ background:SEV_DOT[a.severity]||'var(--brand)' }} />
+            <div className="alert-dot" style={{ background:SEV_DOT[a.severity]||'var(--accent)' }} />
             <div style={{ flex:1, minWidth:0 }}>
               <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:3 }}>
                 <span style={{ fontSize:13.5, fontWeight:600, color:'var(--txt)' }}>{a.title}</span>

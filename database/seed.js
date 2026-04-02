@@ -1,5 +1,5 @@
 /**
- * FamilyOS — Database Seed
+ * FamilyOS — Database Seed (US Locale)
  * Run: node database/seed.js
  */
 require('dotenv').config();
@@ -27,16 +27,17 @@ db.exec(`
 
 // ─── FAMILY ─────────────────────────────────────────────────────────
 const familyId = uuidv4();
-db.prepare(`INSERT INTO families (id, name, plan) VALUES (?, ?, ?)`).run(familyId, 'Kumar Family', 'pro');
+db.prepare(`INSERT INTO families (id, name, plan) VALUES (?, ?, ?)`).run(familyId, 'Singh Family', 'pro');
 
 // ─── USERS ──────────────────────────────────────────────────────────
 const passwordHash = bcrypt.hashSync('password123', 10);
 
 const users = [
-  { id: uuidv4(), first: 'Arun', last: 'Kumar', email: 'arun@familyos.ai', phone: '+91 98765 43210', role: 'admin', relation: 'self', dob: '1983-04-14', color: '#0f1f3d' },
-  { id: uuidv4(), first: 'Sunita', last: 'Kumar', email: 'sunita@gmail.com', phone: '+91 98765 43211', role: 'co-admin', relation: 'spouse', dob: '1986-08-22', color: '#07b98a' },
-  { id: uuidv4(), first: 'Arjun', last: 'Kumar', email: 'arjun@gmail.com', phone: '+91 98765 43212', role: 'member', relation: 'son', dob: '2008-03-10', color: '#f59e0b' },
-  { id: uuidv4(), first: 'Maya', last: 'Kumar', email: 'maya@gmail.com', phone: '+91 98765 43213', role: 'member', relation: 'daughter', dob: '2013-11-05', color: '#f43f5e' },
+  { id: uuidv4(), first: 'Gurmail', last: 'Singh', email: 'gurmail@familyos.ai', phone: '+1 (555) 987-6543', role: 'admin', relation: 'self', dob: '1983-04-14', color: '#0f1f3d' },
+  { id: uuidv4(), first: 'Anita', last: 'Singh', email: 'anita@gmail.com', phone: '+1 (555) 987-6544', role: 'co-admin', relation: 'spouse', dob: '1986-08-22', color: '#07b98a' },
+  { id: uuidv4(), first: 'Raj', last: 'Singh', email: 'raj@gmail.com', phone: '+1 (555) 987-6545', role: 'member', relation: 'son', dob: '2008-03-10', color: '#f59e0b' },
+  { id: uuidv4(), first: 'Priya', last: 'Singh', email: 'priya@gmail.com', phone: '+1 (555) 987-6546', role: 'member', relation: 'daughter', dob: '2013-11-05', color: '#f43f5e' },
+  { id: uuidv4(), first: 'Mom', last: 'Singh', email: 'mom@gmail.com', phone: '+1 (555) 987-6547', role: 'view-only', relation: 'mother', dob: '1955-06-15', color: '#6c2bd9' },
 ];
 
 const insertUser = db.prepare(`
@@ -49,9 +50,10 @@ const insertPerm = db.prepare(`
 `);
 
 const permMap = {
-  admin:     { vault: 'full', portfolio: 'full', insights: 'full', family_mgmt: 'admin' },
-  'co-admin':{ vault: 'full', portfolio: 'view', insights: 'full', family_mgmt: 'co-admin' },
-  member:    { vault: 'own',  portfolio: 'none', insights: 'none', family_mgmt: 'none' },
+  admin:      { vault: 'full', portfolio: 'full', insights: 'full', family_mgmt: 'admin' },
+  'co-admin': { vault: 'full', portfolio: 'view', insights: 'full', family_mgmt: 'co-admin' },
+  member:     { vault: 'own',  portfolio: 'none', insights: 'none', family_mgmt: 'none' },
+  'view-only':{ vault: 'view', portfolio: 'view', insights: 'view', family_mgmt: 'none' },
 };
 
 users.forEach(u => {
@@ -60,89 +62,93 @@ users.forEach(u => {
   insertPerm.run(uuidv4(), u.id, p.vault, p.portfolio, p.insights, p.family_mgmt);
 });
 
-const [arun, sunita, arjun, maya] = users;
+const [gurmail, anita, raj, priya, mom] = users;
 
-// ─── DOCUMENTS ──────────────────────────────────────────────────────
+// ─── DOCUMENTS (US-oriented) ───────────────────────────────────────
 const docs = [
-  // Arun
-  { owner: arun.id, name: 'Aadhaar Card — Arun Kumar', cat: 'identity', status: 'current', size: '0.8 MB', ai: 1, summary: '{"type":"National ID","issuer":"UIDAI","number":"XXXX XXXX 4321","valid":"Lifetime"}' },
-  { owner: arun.id, name: 'PAN Card — Arun Kumar', cat: 'identity', status: 'current', size: '0.4 MB', ai: 1, summary: '{"type":"Tax ID","issuer":"Income Tax Dept","number":"ABCPK1234D","valid":"Lifetime"}' },
-  { owner: arun.id, name: 'Passport — Arun Kumar', cat: 'identity', status: 'expiring', expiry: '2025-06-14', size: '1.1 MB', ai: 1, summary: '{"type":"Passport","issuer":"MEA India","number":"P1234567","expiry":"14 Jun 2025","alert":"Renewal needed — 6-8 weeks processing"}' },
-  { owner: arun.id, name: 'ITR — FY 2023-24', cat: 'tax', status: 'current', size: '2.3 MB', ai: 1, summary: '{"type":"Income Tax Return","year":"FY 2023-24","filed":"31 Jul 2024","refund":"₹42,800","status":"Verified"}' },
-  { owner: arun.id, name: 'Home Loan Agreement — HDFC', cat: 'property', status: 'current', size: '4.1 MB', ai: 1, summary: '{"type":"Loan Agreement","lender":"HDFC Bank","amount":"₹65L","rate":"8.5%","tenure":"20yr","emi":"₹56,400"}' },
-  { owner: arun.id, name: 'Property Registration Deed', cat: 'property', status: 'current', size: '3.8 MB', ai: 1, summary: '{"type":"Sale Deed","property":"H-42, Sector 62, Noida","area":"1850 sqft","value":"₹1.2Cr","registered":"2018-11-12"}' },
-  { owner: arun.id, name: 'Car Insurance — Hyundai Creta', cat: 'insurance', status: 'expiring', expiry: '2025-04-01', size: '0.9 MB', ai: 1, summary: '{"type":"Motor Insurance","vehicle":"Hyundai Creta 2022","insurer":"HDFC Ergo","expiry":"1 Apr 2025","premium":"₹20,800/yr"}' },
-  { owner: arun.id, name: 'Health Insurance Policy', cat: 'insurance', status: 'current', expiry: '2026-01-15', size: '1.5 MB', ai: 1, summary: '{"type":"Health Insurance","insurer":"Star Health","sum":"₹25L","members":4,"premium":"₹42,000/yr","expiry":"15 Jan 2026"}' },
-  { owner: arun.id, name: 'Will & Testament', cat: 'legal', status: 'review', size: '2.1 MB', ai: 1, summary: '{"type":"Will","notarized":"2021-01-15","lawyer":"Sharma & Associates","note":"Update recommended — property acquired post-will"}' },
-  { owner: arun.id, name: 'SBI Fixed Deposit Receipt', cat: 'finance', status: 'current', expiry: '2026-03-20', size: '0.5 MB', ai: 1, summary: '{"type":"FD Receipt","bank":"SBI","amount":"₹10L","rate":"6.8%","maturity":"20 Mar 2026","maturityValue":"₹11,43,880"}' },
-  { owner: arun.id, name: 'Driving Licence', cat: 'identity', status: 'current', expiry: '2029-04-13', size: '0.7 MB', ai: 1, summary: '{"type":"Driving Licence","number":"UP14 20150049876","valid":"Until 2029","classes":"LMV, MCWG"}' },
-  // Sunita
-  { owner: sunita.id, name: 'Aadhaar Card — Sunita Kumar', cat: 'identity', status: 'current', size: '0.8 MB', ai: 1 },
-  { owner: sunita.id, name: 'PAN Card — Sunita Kumar', cat: 'identity', status: 'current', size: '0.4 MB', ai: 1 },
-  { owner: sunita.id, name: 'Passport — Sunita Kumar', cat: 'identity', status: 'current', expiry: '2028-08-22', size: '1.1 MB', ai: 1 },
-  { owner: sunita.id, name: 'ITR FY 2023-24 — Sunita', cat: 'tax', status: 'current', size: '1.8 MB', ai: 1 },
-  { owner: sunita.id, name: 'Teaching Certificate', cat: 'education', status: 'current', size: '1.2 MB', ai: 1 },
-  // Arjun
-  { owner: arjun.id, name: 'Aadhaar Card — Arjun Kumar', cat: 'identity', status: 'current', size: '0.7 MB', ai: 1 },
-  { owner: arjun.id, name: 'Birth Certificate — Arjun', cat: 'legal', status: 'current', size: '0.6 MB', ai: 1 },
-  { owner: arjun.id, name: 'Class 10 Marksheet', cat: 'education', status: 'current', size: '0.8 MB', ai: 1 },
-  // Maya
-  { owner: maya.id, name: 'Aadhaar Card — Maya Kumar', cat: 'identity', status: 'current', size: '0.6 MB', ai: 1 },
-  { owner: maya.id, name: 'Birth Certificate — Maya', cat: 'legal', status: 'current', size: '0.6 MB', ai: 1 },
-  { owner: maya.id, name: 'Vaccination Record — Maya', cat: 'medical', status: 'current', size: '1.2 MB', ai: 1 },
-  { owner: maya.id, name: 'School Report Card 2024', cat: 'education', status: 'current', size: '0.9 MB', ai: 1 },
+  // Gurmail
+  { owner: gurmail.id, name: "Singh Family's Passport", cat: 'identity', status: 'expiring', expiry: '2026-03-28', size: '1.1 MB', ai: 1, summary: '{"type":"US Passport","issuer":"US Dept of State","number":"US #987654321","expiry":"Mar 28, 2026","confidence":0.98}' },
+  { owner: gurmail.id, name: "Singh Family's Driver License", cat: 'identity', status: 'valid', expiry: '2028-08-22', size: '0.4 MB', ai: 1, summary: '{"type":"Driver License","issuer":"CA DMV","number":"CA DL #D1234567","expiry":"Aug 22, 2028","confidence":0.95}' },
+  { owner: gurmail.id, name: "Singh Family's Social Security", cat: 'identity', status: 'valid', size: '0.3 MB', ai: 1, summary: '{"type":"Social Security Card","issuer":"SSA","number":"SSN (redacted)","confidence":0.88}' },
+  { owner: gurmail.id, name: 'W-2 Form — 2024', cat: 'finance', status: 'current', size: '0.8 MB', ai: 1, summary: '{"type":"W-2 Wage Statement","issuer":"Employer","year":"2024","confidence":0.96}' },
+  { owner: gurmail.id, name: '1099 Forms — 2024', cat: 'finance', status: 'current', size: '1.2 MB', ai: 1, summary: '{"type":"1099 Misc Income","issuer":"IRS","year":"2024","confidence":0.94}' },
+  { owner: gurmail.id, name: 'Mortgage Agreement — Chase', cat: 'property', status: 'current', size: '4.1 MB', ai: 1, summary: '{"type":"Mortgage Agreement","lender":"Chase Bank","amount":"$650K","rate":"6.5%","term":"30yr"}' },
+  { owner: gurmail.id, name: 'Property Deed — Primary Home', cat: 'property', status: 'current', size: '3.8 MB', ai: 1, summary: '{"type":"Property Deed","property":"123 Oak Lane, San Jose, CA","sqft":"2,200","value":"$890,000"}' },
+  { owner: gurmail.id, name: 'Auto Insurance — State Farm', cat: 'insurance', status: 'expiring', expiry: '2026-04-01', size: '0.9 MB', ai: 1, summary: '{"type":"Auto Insurance","vehicle":"Toyota Camry 2023","insurer":"State Farm","premium":"$1,800/yr","confidence":0.94}' },
+  { owner: gurmail.id, name: 'Health Insurance — Blue Cross', cat: 'insurance', status: 'current', expiry: '2026-12-31', size: '1.5 MB', ai: 1, summary: '{"type":"Health Insurance","insurer":"Blue Cross","plan":"PPO Family","premium":"$18,000/yr","confidence":0.96}' },
+  { owner: gurmail.id, name: 'Living Trust Document', cat: 'legal', status: 'review', size: '2.1 MB', ai: 1, summary: '{"type":"Living Trust","attorney":"Smith & Associates","date":"2021-01-15","note":"Update recommended"}' },
+  { owner: gurmail.id, name: 'Life Insurance — Northwestern', cat: 'insurance', status: 'current', expiry: '2035-06-14', size: '1.8 MB', ai: 1, summary: '{"type":"Life Insurance","insurer":"Northwestern Mutual","coverage":"$1M","premium":"$2,400/yr","confidence":0.97}' },
+  { owner: gurmail.id, name: 'Schwab Brokerage Statement', cat: 'finance', status: 'current', size: '2.3 MB', ai: 1, summary: '{"type":"Brokerage Statement","institution":"Charles Schwab","value":"$1,180,400","confidence":0.95}' },
+  // Anita
+  { owner: anita.id, name: "Singh Family's Passport", cat: 'identity', status: 'expiring', expiry: '2026-03-28', size: '1.1 MB', ai: 1, summary: '{"type":"US Passport","issuer":"US Dept of State","number":"US #987654321","expiry":"Mar 28, 2026","confidence":0.98}' },
+  { owner: anita.id, name: 'Teaching Certificate', cat: 'education', status: 'current', size: '1.2 MB', ai: 1, summary: '{"type":"Teaching Certificate","issuer":"CA Board of Education","confidence":0.92}' },
+  { owner: anita.id, name: "401(k) Statement — Anita", cat: 'finance', status: 'current', size: '1.0 MB', ai: 1, summary: '{"type":"401k Statement","institution":"Fidelity","value":"$438,800","confidence":0.94}' },
+  // Raj & Priya
+  { owner: raj.id, name: 'Birth Certificates', cat: 'legal', status: 'valid', expiry: '2028-08-22', size: '0.6 MB', ai: 1, summary: '{"type":"Birth Certificate","issuer":"County Clerk","number":"US #987654367","confidence":0.95}' },
+  { owner: raj.id, name: 'School Records — Raj', cat: 'education', status: 'current', size: '0.8 MB', ai: 1 },
+  { owner: priya.id, name: 'Birth Certificate — Priya', cat: 'legal', status: 'current', size: '0.6 MB', ai: 1 },
+  { owner: priya.id, name: 'Vaccination Record', cat: 'medical', status: 'current', size: '1.2 MB', ai: 1 },
+  { owner: priya.id, name: 'School Report Card 2024', cat: 'education', status: 'current', size: '0.9 MB', ai: 1 },
+  // Mom
+  { owner: mom.id, name: 'Medicare Card', cat: 'insurance', status: 'current', size: '0.4 MB', ai: 1, summary: '{"type":"Medicare Card","issuer":"CMS","confidence":0.96}' },
+  // Family/Shared
+  { owner: gurmail.id, name: 'Marriage Certificate', cat: 'legal', status: 'valid', expiry: '2026-03-28', size: '0.5 MB', ai: 1, summary: '{"type":"Marriage Certificate","issuer":"County Clerk","confidence":0.97}' },
+  { owner: gurmail.id, name: 'Home Insurance — Allstate', cat: 'insurance', status: 'current', expiry: '2026-09-15', size: '1.3 MB', ai: 1, summary: '{"type":"Homeowners Insurance","insurer":"Allstate","coverage":"$890K","premium":"$3,200/yr","confidence":0.95}' },
 ];
 
 const insertDoc = db.prepare(`
   INSERT INTO documents (id, family_id, owner_id, name, category, file_size, status, expiry_date, ai_analyzed, ai_summary, created_at)
   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', '-' || ? || ' days'))
 `);
-
 docs.forEach((d, i) => {
   insertDoc.run(uuidv4(), familyId, d.owner, d.name, d.cat, d.size || '0.8 MB', d.status, d.expiry || null, d.ai || 0, d.summary || null, Math.floor(Math.random() * 90));
 });
 
-// ─── ASSETS ─────────────────────────────────────────────────────────
+// ─── ASSETS (USD) ──────────────────────────────────────────────────
 const assets = [
-  { name: 'Primary Home — Sector 62', subtitle: 'Noida, UP · 1850 sqft', category: 'real-estate', value: 12500000, institution: 'Self-Owned' },
-  { name: 'Equity Portfolio — Zerodha', subtitle: 'Stocks + Mutual Funds', category: 'equities', value: 5892000, institution: 'Zerodha' },
-  { name: 'Fixed Deposits — SBI', subtitle: '3 FDs · Maturity 2025-26', category: 'fixed-income', value: 3310000, institution: 'SBI' },
-  { name: 'Savings & Current Accounts', subtitle: 'HDFC + ICICI', category: 'cash', value: 1472000, institution: 'HDFC / ICICI' },
-  { name: 'Gold Holdings', subtitle: 'Physical + Digital Gold', category: 'gold', value: 890000, institution: 'Mixed' },
-  { name: 'PPF Account', subtitle: 'SBI PPF · 15yr tenure', category: 'fixed-income', value: 680000, institution: 'SBI' },
+  { name: 'Brokerage (Schwab)', subtitle: 'Taxable · Stocks + ETFs', category: 'equities', value: 1180400, institution: 'Charles Schwab' },
+  { name: 'Real Estate', subtitle: 'Primary Residence · San Jose, CA', category: 'real-estate', value: 890000, institution: 'Self-Owned' },
+  { name: '401(k) — Gurmail', subtitle: 'Retirement · Employer match', category: 'equities', value: 642000, institution: 'Fidelity' },
+  { name: '401(k) — Anita', subtitle: 'Retirement', category: 'equities', value: 438800, institution: 'Fidelity' },
+  { name: 'Savings (Chase)', subtitle: 'Emergency Fund', category: 'cash', value: 124200, institution: 'Chase Bank' },
+  { name: '529 Plans', subtitle: 'Education · Raj & Priya', category: 'fixed-income', value: 70000, institution: 'Vanguard' },
+  { name: 'Crypto (Coinbase)', subtitle: 'Digital Assets', category: 'crypto', value: 68800, institution: 'Coinbase' },
 ];
 
 const insertAsset = db.prepare(`INSERT INTO assets (id, family_id, name, subtitle, category, value, institution) VALUES (?, ?, ?, ?, ?, ?, ?)`);
 assets.forEach(a => insertAsset.run(uuidv4(), familyId, a.name, a.subtitle, a.category, a.value, a.institution));
 
-// ─── LIABILITIES ────────────────────────────────────────────────────
+// ─── LIABILITIES (USD) ─────────────────────────────────────────────
 const liabilities = [
-  { name: 'Home Loan — HDFC', subtitle: '20yr fixed · 14 yrs remaining', category: 'mortgage', balance: 4200000, rate: 8.5, emi: 56400, institution: 'HDFC Bank' },
-  { name: 'Car Loan — Hyundai Creta', subtitle: '2 years remaining', category: 'auto', balance: 184000, rate: 9.0, emi: 8200, institution: 'HDFC Auto' },
+  { name: 'Mortgage — Chase', subtitle: '30yr fixed · 24 yrs remaining', category: 'mortgage', balance: 485000, rate: 6.5, emi: 3800, institution: 'Chase Bank' },
+  { name: 'Auto Loan — Toyota', subtitle: '3 years remaining', category: 'auto', balance: 18400, rate: 5.2, emi: 540, institution: 'Toyota Financial' },
+  { name: 'Student Loan — Anita', subtitle: 'Federal · 5 yrs remaining', category: 'education', balance: 32080, rate: 4.5, emi: 600, institution: 'Dept of Education' },
+  { name: 'Credit Card — Amex', subtitle: 'Revolving', category: 'credit-card', balance: 30000, rate: 21.0, emi: 900, institution: 'American Express' },
 ];
 
 const insertLia = db.prepare(`INSERT INTO liabilities (id, family_id, name, subtitle, category, balance, interest_rate, emi, institution) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`);
 liabilities.forEach(l => insertLia.run(uuidv4(), familyId, l.name, l.subtitle, l.category, l.balance, l.rate, l.emi, l.institution));
 
-// ─── NET WORTH SNAPSHOTS (12 months history) ────────────────────────
-const snapshots = [
-  [15800000, 4600000], [16100000, 4550000], [16350000, 4510000], [16580000, 4480000],
-  [16420000, 4460000], [16860000, 4440000], [17120000, 4410000], [17380000, 4395000],
-  [17620000, 4390000], [17950000, 4384000], [18210000, 4384000], [18744000, 4384000]
-];
+// ─── NET WORTH SNAPSHOTS (24 months, USD) ──────────────────────────
+const snapshots = [];
+for (let i = 23; i >= 0; i--) {
+  const baseAssets = 2800000 + (23 - i) * 26000 + Math.floor(Math.random() * 20000);
+  const baseLiab = 600000 - (23 - i) * 1500;
+  snapshots.push([baseAssets, baseLiab]);
+}
 
 const insertSnap = db.prepare(`INSERT INTO net_worth_snapshots (id, family_id, total_assets, total_liabilities, net_worth, snapshot_date) VALUES (?, ?, ?, ?, ?, date('now', '-' || ? || ' months'))`);
 snapshots.forEach(([a, l], i) => {
-  insertSnap.run(uuidv4(), familyId, a, l, a - l, 11 - i);
+  insertSnap.run(uuidv4(), familyId, a, l, a - l, 23 - i);
 });
 
 // ─── ALERTS ─────────────────────────────────────────────────────────
 const alerts = [
-  { user: arun.id, type: 'urgent', icon: '🛂', title: 'Passport expiring in 47 days', desc: 'Arun Kumar · Renewal takes 6–8 weeks. Apply immediately.' },
-  { user: arun.id, type: 'urgent', icon: '🏛', title: 'Property tax due in 12 days', desc: '₹42,800 due · March 1, 2025. Late fee 1.5%/month.' },
-  { user: arun.id, type: 'warning', icon: '🚗', title: 'Car insurance renewal in 30 days', desc: 'Hyundai Creta · HDFC Ergo · Due Apr 1, 2025.' },
-  { user: arun.id, type: 'info', icon: '✨', title: 'AI filed 3 documents automatically', desc: 'ITR, FD receipt, and insurance renewal auto-categorised.' },
-  { user: arun.id, type: 'success', icon: '📈', title: 'Portfolio up ₹52,400 this month', desc: 'Equity portfolio leading gains. Net worth at all-time high.' },
+  { user: gurmail.id, type: 'urgent', icon: '🛂', title: 'Passport expires in 45 days', desc: 'Passport expires in 45 days', sev: 'critical' },
+  { user: gurmail.id, type: 'warning', icon: '🛡', title: 'Insurance review recommended', desc: 'Insurance review recommended', sev: 'warning' },
+  { user: gurmail.id, type: 'info', icon: '📄', title: 'Missing document detected', desc: 'Missing document detected', sev: 'info' },
+  { user: gurmail.id, type: 'info', icon: '📊', title: 'Portfolio rebalance alert', desc: 'Portfolio rebalance alert', sev: 'info' },
+  { user: gurmail.id, type: 'success', icon: '📈', title: 'Net worth up $16.7K this month', desc: 'Portfolio at all-time high' },
 ];
 
 const insertAlert = db.prepare(`INSERT INTO alerts (id, family_id, user_id, type, icon, title, description) VALUES (?, ?, ?, ?, ?, ?, ?)`);
@@ -150,24 +156,25 @@ alerts.forEach(a => insertAlert.run(uuidv4(), familyId, a.user, a.type, a.icon, 
 
 // ─── TASKS ──────────────────────────────────────────────────────────
 const tasks = [
-  { title: 'Renew passport — Arun', due: '2025-02-20', urgent: 1, done: 0, priority: 1 },
-  { title: 'Pay property tax ₹42,800', due: '2025-03-01', urgent: 1, done: 0, priority: 2 },
-  { title: 'Update will beneficiaries', due: '2025-01-15', urgent: 1, done: 0, priority: 3 },
-  { title: 'Upload FY 2024-25 advance tax receipt', due: '2025-02-28', urgent: 0, done: 0, priority: 4 },
-  { title: "Add Arjun's Class 12 marksheet", due: '2025-03-31', urgent: 0, done: 0, priority: 5 },
-  { title: 'Share portfolio summary with CA', due: '2025-02-14', urgent: 0, done: 1, priority: 6 },
-  { title: 'Upload vehicle RC document', due: '2025-01-31', urgent: 0, done: 1, priority: 7 },
+  { title: 'Renew passport — Gurmail', due: '2026-02-20', urgent: 1, done: 0, priority: 1 },
+  { title: 'Review home insurance renewal', due: '2026-03-01', urgent: 1, done: 0, priority: 2 },
+  { title: 'Update living trust beneficiaries', due: '2026-01-15', urgent: 1, done: 0, priority: 3 },
+  { title: 'File 2025 tax return', due: '2026-04-15', urgent: 0, done: 0, priority: 4 },
+  { title: 'Tax season prep', due: '2026-03-31', urgent: 0, done: 0, priority: 5 },
+  { title: 'Upload Raj college acceptance letter', due: '2026-03-31', urgent: 0, done: 0, priority: 6 },
+  { title: 'Review 529 plan allocations', due: '2026-02-14', urgent: 0, done: 1, priority: 7 },
+  { title: 'Upload vehicle registration', due: '2026-01-31', urgent: 0, done: 1, priority: 8 },
 ];
 
 const insertTask = db.prepare(`INSERT INTO tasks (id, family_id, assigned_to, title, due_date, is_urgent, is_done, priority) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`);
-tasks.forEach(t => insertTask.run(uuidv4(), familyId, arun.id, t.title, t.due, t.urgent, t.done, t.priority));
+tasks.forEach(t => insertTask.run(uuidv4(), familyId, gurmail.id, t.title, t.due, t.urgent, t.done, t.priority));
 
 // ─── AUDIT LOG ──────────────────────────────────────────────────────
 const auditEntries = [
-  { user: arun.id, action: 'document.uploaded', entity: 'documents', meta: '{"name":"ITR FY2023-24"}' },
-  { user: arun.id, action: 'ai.analysis_complete', entity: 'documents', meta: '{"count":3}' },
-  { user: sunita.id, action: 'vault.accessed', entity: 'documents', meta: '{"section":"Insurance"}' },
-  { user: arun.id, action: 'portfolio.viewed', entity: 'assets', meta: '{}' },
+  { user: gurmail.id, action: 'document.uploaded', entity: 'documents', meta: '{"name":"W-2 Form 2024"}' },
+  { user: gurmail.id, action: 'ai.analysis_complete', entity: 'documents', meta: '{"count":5}' },
+  { user: anita.id, action: 'vault.accessed', entity: 'documents', meta: '{"section":"Insurance"}' },
+  { user: gurmail.id, action: 'portfolio.viewed', entity: 'assets', meta: '{}' },
 ];
 
 const insertAudit = db.prepare(`INSERT INTO audit_log (id, family_id, user_id, action, entity_type, meta, created_at) VALUES (?, ?, ?, ?, ?, ?, datetime('now', '-' || ? || ' hours'))`);
@@ -176,12 +183,14 @@ auditEntries.forEach((e, i) => insertAudit.run(uuidv4(), familyId, e.user, e.act
 // ─── SUMMARY ────────────────────────────────────────────────────────
 console.log('✅ Seed complete!\n');
 console.log('📌 Login credentials:');
-console.log('   Email:    arun@familyos.ai');
+console.log('   Email:    gurmail@familyos.ai');
 console.log('   Password: password123\n');
 console.log('📊 Seeded:');
-console.log(`   • 1 family, ${users.length} users`);
+console.log(`   • 1 family (Singh Family), ${users.length} users`);
 console.log(`   • ${docs.length} documents`);
 console.log(`   • ${assets.length} assets, ${liabilities.length} liabilities`);
 console.log(`   • ${snapshots.length} net worth snapshots`);
 console.log(`   • ${alerts.length} alerts, ${tasks.length} tasks`);
-console.log('\n🚀 Run: npm run dev\n');
+console.log('   • Currency: USD ($)');
+console.log('   • Locale: en-US\n');
+console.log('🚀 Run: npm run dev\n');
