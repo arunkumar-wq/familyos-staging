@@ -93,35 +93,10 @@ export default function Navbar({ page, navigate }) {
 
       <div className="navbar-right">
         {/* Bell Icon */}
-        <div style={{position:'relative'}}>
-          <button className="navbar-bell" onClick={() => { setBellOpen(!bellOpen); setUserMenu(false); setMoreOpen(false); }} aria-label={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ''}`}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
-            {unreadCount > 0 && <span className="navbar-bell-dot">{unreadCount}</span>}
-          </button>
-          {bellOpen && (
-            <div className="navbar-dropdown navbar-bell-dropdown">
-              <div style={{padding:'12px 16px 8px',display:'flex',justifyContent:'space-between',alignItems:'center',borderBottom:'1px solid var(--border)'}}>
-                <span style={{fontSize:14,fontWeight:700,color:'var(--txt)'}}>Notifications</span>
-                <button className="btn btn-xs btn-outline" onClick={() => handleNav('notifications')}>View All</button>
-              </div>
-              {alerts.length === 0 ? (
-                <div style={{padding:'24px 16px',textAlign:'center',color:'var(--txt4)',fontSize:13}}>No new notifications</div>
-              ) : alerts.map(a => (
-                <div key={a.id} style={{display:'flex',alignItems:'flex-start',gap:10,padding:'10px 16px',borderBottom:'1px solid var(--border)',cursor:'pointer',transition:'background .15s'}} onClick={() => handleNav('notifications')}>
-                  <div style={{width:8,height:8,borderRadius:'50%',background:SEV_DOT[a.severity]||'#0a9e9e',marginTop:5,flexShrink:0}} />
-                  <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontSize:12.5,fontWeight:600,color:'var(--txt)',lineHeight:1.3,marginBottom:2}}>{a.title}</div>
-                    <div style={{fontSize:11,color:'var(--txt4)'}}>{fmtDate(a.created_at)}</div>
-                  </div>
-                  <button onClick={e => { e.stopPropagation(); dismissAlert(a.id); }} style={{background:'none',border:'none',color:'var(--txt4)',cursor:'pointer',fontSize:14,padding:'0 2px',flexShrink:0,lineHeight:1}} aria-label="Dismiss">&times;</button>
-                </div>
-              ))}
-              <div style={{padding:'8px 16px',borderTop:alerts.length?'none':'none'}}>
-                <button className="btn btn-sm btn-teal" style={{width:'100%'}} onClick={() => handleNav('notifications')}>See All Alerts</button>
-              </div>
-            </div>
-          )}
-        </div>
+        <button className="navbar-bell" onClick={e => { e.stopPropagation(); setBellOpen(!bellOpen); setUserMenu(false); setMoreOpen(false); }} aria-label={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ''}`}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+          {unreadCount > 0 && <span className="navbar-bell-dot">{unreadCount}</span>}
+        </button>
 
         {/* User Menu */}
         <div className="navbar-user" onClick={() => { setUserMenu(!userMenu); setMoreOpen(false); setBellOpen(false); }} style={{position:'relative'}}>
@@ -155,6 +130,30 @@ export default function Navbar({ page, navigate }) {
 
       {(moreOpen || userMenu || bellOpen) && (
         <div style={{position:'fixed',inset:0,zIndex:150}} onClick={closeAll} />
+      )}
+
+      {bellOpen && (
+        <div className="navbar-bell-dropdown" onClick={e => e.stopPropagation()}>
+          <div style={{padding:'12px 16px 8px',display:'flex',justifyContent:'space-between',alignItems:'center',borderBottom:'1px solid var(--border)'}}>
+            <span style={{fontSize:14,fontWeight:700,color:'var(--txt)'}}>Notifications</span>
+            <button className="btn btn-xs btn-outline" onClick={() => handleNav('notifications')}>View All</button>
+          </div>
+          {alerts.length === 0 ? (
+            <div style={{padding:'24px 16px',textAlign:'center',color:'var(--txt4)',fontSize:13}}>No new notifications</div>
+          ) : alerts.map(a => (
+            <div key={a.id} style={{display:'flex',alignItems:'flex-start',gap:10,padding:'10px 16px',borderBottom:'1px solid var(--border)',cursor:'pointer',transition:'background .15s'}} onClick={() => handleNav('notifications')}>
+              <div style={{width:8,height:8,borderRadius:'50%',background:SEV_DOT[a.severity]||'#0a9e9e',marginTop:5,flexShrink:0}} />
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:12.5,fontWeight:600,color:'var(--txt)',lineHeight:1.3,marginBottom:2}}>{a.title}</div>
+                <div style={{fontSize:11,color:'var(--txt4)'}}>{fmtDate(a.created_at)}</div>
+              </div>
+              <button onClick={e => { e.stopPropagation(); dismissAlert(a.id); }} style={{background:'none',border:'none',color:'var(--txt4)',cursor:'pointer',fontSize:14,padding:'0 2px',flexShrink:0,lineHeight:1}} aria-label="Dismiss">&times;</button>
+            </div>
+          ))}
+          <div style={{padding:'8px 16px'}}>
+            <button className="btn btn-sm btn-teal" style={{width:'100%'}} onClick={() => handleNav('notifications')}>See All Alerts</button>
+          </div>
+        </div>
       )}
     </nav>
   );

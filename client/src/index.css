@@ -32,7 +32,7 @@ button{cursor:pointer;font-family:inherit}input,select,textarea{font-family:inhe
 .navbar-bell{position:relative;background:none;border:none;color:rgba(255,255,255,.7);padding:6px;border-radius:var(--r-md);cursor:pointer;transition:all var(--dur);display:flex;align-items:center;justify-content:center}
 .navbar-bell:hover{color:#fff;background:rgba(255,255,255,.1)}
 .navbar-bell-dot{position:absolute;top:2px;right:1px;min-width:16px;height:16px;border-radius:var(--r-full);background:var(--red);color:#fff;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 4px;border:2px solid #1a2332;line-height:1}
-.navbar-bell-dropdown{right:-16px;left:auto;width:340px;max-height:420px;overflow-y:auto}
+.navbar-bell-dropdown.navbar-bell-dropdown{position:fixed;top:calc(var(--navbar-h) + 4px);right:28px;left:auto;width:360px;max-height:420px;overflow-y:auto;margin-top:0;z-index:210}
 .navbar-mobile-btn{display:none;background:none;border:none;color:#fff;padding:6px}
 .navbar-more-wrap{position:relative}
 .navbar-mobile-extra{display:none}
@@ -273,7 +273,7 @@ button{cursor:pointer;font-family:inherit}input,select,textarea{font-family:inhe
   .navbar-nav.mobile-open .navbar-link.active::after{display:none}
   .navbar-more-wrap{display:none}
   .navbar-nav.mobile-open .navbar-mobile-extra{display:flex;flex-direction:column;border-top:1px solid rgba(255,255,255,.08);margin-top:4px;padding-top:4px}
-  .navbar-bell-dropdown{width:calc(100vw - 24px);left:50%;transform:translateX(-50%);right:auto;position:fixed;top:calc(var(--navbar-h) + 4px)}
+  .navbar-bell-dropdown.navbar-bell-dropdown{width:calc(100vw - 24px);right:12px}
   .navbar-mobile-btn{display:flex}
   .navbar-user-name{display:none}
   .page-scroll{padding:16px}
