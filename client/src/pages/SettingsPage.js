@@ -57,14 +57,19 @@ export default function SettingsPage({ navigate }) {
   return (
     <div className="page-inner">
       <PageHeader title="Settings" sub="Manage your account and preferences" />
-      <div style={{ display:'grid', gridTemplateColumns:'200px 1fr', gap:20 }}>
-        <div className="card" style={{ padding:10, alignSelf:'start' }}>
+      <div className="settings-layout">
+        {/* Desktop sidebar */}
+        <div className="card settings-sidebar" style={{ padding:10, alignSelf:'start' }}>
           <div style={{ padding:'8px 10px 4px', fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'.08em', color:'var(--accent)' }}>Account</div>
           {TABS.map(t => (<button key={t} className={'settings-tab'+(tab===t?' active':'')} onClick={() => setTab(t)}>{t}</button>))}
           <div className="divider" />
           <button className="settings-tab" onClick={logout} style={{ color:'var(--red)' }}>Sign Out</button>
         </div>
-        <div>
+        {/* Mobile horizontal tabs */}
+        <div className="settings-tabs-mobile">
+          {TABS.map(t => (<button key={t} className={'settings-pill'+(tab===t?' active':'')} onClick={() => setTab(t)}>{t}</button>))}
+        </div>
+        <div className="settings-content">
           {saved&&(<div role="status" style={{ background:'var(--green-bg)', border:'1px solid var(--green-border)', borderRadius:'var(--r-md)', padding:'10px 16px', marginBottom:16, color:'var(--green)', fontSize:13 }}>Settings saved successfully.</div>)}
           {tab==='Profile'&&(
             <div className="card" style={{ overflow:'hidden' }}>

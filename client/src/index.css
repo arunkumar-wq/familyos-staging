@@ -153,9 +153,16 @@ button{cursor:pointer;font-family:inherit}input,select,textarea{font-family:inhe
 .nw-arrow{display:flex;align-items:center;justify-content:center;padding:0 6px;flex-shrink:0}
 
 /* ─── SETTINGS ─── */
+.settings-layout{display:grid;grid-template-columns:200px 1fr;gap:20px}
+.settings-sidebar{display:block}
+.settings-tabs-mobile{display:none}
+.settings-content{min-width:0}
 .settings-tab{display:block;width:100%;text-align:left;padding:9px 12px;border:none;background:none;border-radius:var(--r-md);font-size:13px;font-weight:500;color:var(--txt3);cursor:pointer;transition:all var(--dur);font-family:inherit}
 .settings-tab:hover{background:var(--surface2);color:var(--txt)}
 .settings-tab.active{background:var(--accent-light);color:var(--accent);font-weight:600}
+.settings-pill{padding:7px 16px;border:1.5px solid var(--border);border-radius:var(--r-full);background:var(--surface);color:var(--txt3);font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;font-family:inherit;transition:all var(--dur)}
+.settings-pill.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.settings-pill:hover:not(.active){background:var(--surface2);color:var(--txt)}
 
 /* ─── CALENDAR ─── */
 .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
@@ -321,4 +328,8 @@ button{cursor:pointer;font-family:inherit}input,select,textarea{font-family:inhe
 @media(max-width:768px){
   .doc-table-desktop{display:none}
   .doc-cards-mobile{display:block}
+  .settings-layout{display:flex;flex-direction:column;gap:16px}
+  .settings-sidebar{display:none}
+  .settings-tabs-mobile{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  .settings-tabs-mobile::-webkit-scrollbar{display:none}
 }
