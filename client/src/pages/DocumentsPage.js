@@ -99,9 +99,18 @@ export default function DocumentsPage({ navigate }) {
     grouped[key].docs.push(d);
   });
 
+  // Use stats.byCategory for counts (unaffected by current filter)
   const catCounts = {};
-  const allDocs = docs;
-  CATS.forEach(c => { catCounts[c.id] = c.id === 'all' ? allDocs.length : allDocs.filter(d => d.category === c.id).length; });
+  const byCat = stats.byCategory || [];
+  const totalFromStats = stats.total || 0;
+  CATS.forEach(c => {
+    if (c.id === 'all') {
+      catCounts[c.id] = totalFromStats;
+    } else {
+      const found = byCat.find(x => x.category === c.id);
+      catCounts[c.id] = found ? found.c : 0;
+    }
+  });
 
   return (
     <div className="page-inner">

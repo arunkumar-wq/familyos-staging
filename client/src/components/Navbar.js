@@ -9,15 +9,26 @@ const NAV_ITEMS = [
   { id: 'family', label: 'Family', icon: 'M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zm8 2a4 4 0 00-4 4v2h8v-2a4 4 0 00-4-4z' },
 ];
 
+const MORE_ITEMS = [
+  { id: 'calendar', label: 'Calendar', icon: 'M8 2v4m8-4v4M3 10h18M5 4h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2z' },
+  { id: 'insights', label: 'AI Insights', icon: 'M13 2L3 14h9l-1 8 10-12h-9l1-8z' },
+  { id: 'notifications', label: 'Alerts', icon: 'M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9m-4.27 13a2 2 0 01-3.46 0' },
+  { id: 'audit', label: 'Vault Audit', icon: 'M12 2l9 4v6c0 5.25-3.75 10.15-9 11.5C6.75 22.15 3 17.25 3 12V6l9-4z' },
+];
+
 export default function Navbar({ page, navigate }) {
   const { user, family, logout } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userMenu, setUserMenu] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
 
   const handleNav = (id) => {
     navigate(id);
     setMobileOpen(false);
+    setMoreOpen(false);
   };
+
+  const isMoreActive = MORE_ITEMS.some(m => m.id === page);
 
   return (
     <nav className="navbar" role="navigation" aria-label="Main navigation">
@@ -43,28 +54,79 @@ export default function Navbar({ page, navigate }) {
             {item.label}
           </button>
         ))}
+        {/* More dropdown - desktop */}
+        <div className="navbar-more-wrap" style={{position:'relative'}}>
+          <button
+            className={`navbar-link${isMoreActive ? ' active' : ''}`}
+            onClick={() => setMoreOpen(!moreOpen)}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="1"/><circle cx="5" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg>
+            More
+          </button>
+          {moreOpen && (
+            <div className="navbar-dropdown">
+              {MORE_ITEMS.map(item => (
+                <button
+                  key={item.id}
+                  className={`navbar-dropdown-item${page === item.id ? ' active' : ''}`}
+                  onClick={() => handleNav(item.id)}
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={item.icon}/></svg>
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        {/* Mobile: show all items inline */}
+        <div className="navbar-mobile-extra">
+          {MORE_ITEMS.map(item => (
+            <button
+              key={item.id}
+              className={`navbar-link${page === item.id ? ' active' : ''}`}
+              onClick={() => handleNav(item.id)}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={item.icon}/></svg>
+              {item.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="navbar-right">
-        <div className="navbar-user" onClick={() => setUserMenu(!userMenu)} style={{position:'relative'}}>
+        <div className="navbar-user" onClick={() => { setUserMenu(!userMenu); setMoreOpen(false); }} style={{position:'relative'}}>
           <div className="avatar" style={{ width: 30, height: 30, background: user?.avatar_color || '#1a3a5c', fontSize: 11 }}>
             {initials(user?.first_name, user?.last_name)}
           </div>
           <span className="navbar-user-name">{family?.name || 'Family'}</span>
           <span className="navbar-user-chevron">&#9662;</span>
           {userMenu && (
-            <div style={{position:'absolute',top:'100%',right:0,marginTop:6,background:'var(--surface)',border:'1px solid var(--border)',borderRadius:'var(--r-lg)',boxShadow:'var(--shadow-lg)',minWidth:180,zIndex:200,overflow:'hidden'}}>
-              <button onClick={()=>{setUserMenu(false);navigate('profile');}} style={{display:'block',width:'100%',padding:'10px 16px',border:'none',background:'none',textAlign:'left',fontSize:13,color:'var(--txt2)',cursor:'pointer',fontFamily:'inherit'}}>Edit Profile</button>
-              <button onClick={()=>{setUserMenu(false);navigate('settings');}} style={{display:'block',width:'100%',padding:'10px 16px',border:'none',background:'none',textAlign:'left',fontSize:13,color:'var(--txt2)',cursor:'pointer',fontFamily:'inherit'}}>Settings</button>
-              <div className="divider" style={{margin:'4px 0'}}/>
-              <button onClick={logout} style={{display:'block',width:'100%',padding:'10px 16px',border:'none',background:'none',textAlign:'left',fontSize:13,color:'var(--red)',cursor:'pointer',fontFamily:'inherit'}}>Sign Out</button>
+            <div className="navbar-dropdown" style={{right:0,left:'auto'}}>
+              <button className="navbar-dropdown-item" onClick={()=>{setUserMenu(false);navigate('profile');}}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z"/></svg>
+                Edit Profile
+              </button>
+              <button className="navbar-dropdown-item" onClick={()=>{setUserMenu(false);navigate('settings');}}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+                Settings
+              </button>
+              <div className="divider" style={{margin:'4px 12px'}}/>
+              <button className="navbar-dropdown-item" onClick={logout} style={{color:'var(--red)'}}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+                Sign Out
+              </button>
             </div>
           )}
         </div>
-        <button className="navbar-mobile-btn" onClick={() => setMobileOpen(!mobileOpen)} aria-label="Toggle menu">
+        <button className="navbar-mobile-btn" onClick={() => { setMobileOpen(!mobileOpen); setMoreOpen(false); setUserMenu(false); }} aria-label="Toggle menu">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d={mobileOpen ? 'M18 6L6 18M6 6l12 12' : 'M3 12h18M3 6h18M3 18h18'}/></svg>
         </button>
       </div>
+
+      {/* Click outside to close dropdowns */}
+      {(moreOpen || userMenu) && (
+        <div style={{position:'fixed',inset:0,zIndex:150}} onClick={()=>{setMoreOpen(false);setUserMenu(false);}} />
+      )}
     </nav>
   );
 }
