@@ -164,16 +164,20 @@ export default function DashboardPage({ navigate }) {
               const sev = SEV_STYLES[a.severity] || SEV_STYLES.info;
               return (
                 <div key={a.id} className="ai-alert-card" style={{ background: sev.bg, color: '#fff' }}>
-                  <div className="alert-severity">{sev.label}</div>
-                  <div className="ai-alert-card-title">{a.title}</div>
-                  <div className="ai-alert-card-body">{a.title}</div>
+                  <div className="ai-alert-card-header">
+                    <span className="ai-alert-card-title">{a.title}</span>
+                    <span className="ai-alert-badge">{sev.label}</span>
+                  </div>
+                  <div className="ai-alert-card-body">{a.description || a.title}</div>
                 </div>
               );
             })}
             {tasks.filter(t => !t.is_done).slice(0, 1).map(t => (
               <div key={t.id} className="ai-alert-card" style={{ background: 'var(--surface2)', color: 'var(--txt)', border: '1px solid var(--border)' }}>
-                <div className="alert-severity" style={{ background: 'var(--border)' }}>Todo</div>
-                <div className="ai-alert-card-title">{t.title}</div>
+                <div className="ai-alert-card-header">
+                  <span className="ai-alert-card-title">{t.title}</span>
+                  <span className="ai-alert-badge" style={{ background: 'var(--border2)', color: 'var(--txt3)' }}>Todo</span>
+                </div>
                 <div className="ai-alert-card-body">{t.title}</div>
               </div>
             ))}
