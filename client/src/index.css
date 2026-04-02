@@ -147,9 +147,10 @@ button{cursor:pointer;font-family:inherit}input,select,textarea{font-family:inhe
 .nw-stat-box.liabilities{background:var(--red)}
 .nw-stat-box.net{background:var(--brand)}
 .nw-stat-box-label{font-size:11px;font-weight:600;color:rgba(255,255,255,.7);margin-bottom:6px;display:flex;align-items:center;gap:6px}
+.nw-stat-box-label svg{flex-shrink:0}
 .nw-stat-box-value{font-family:var(--font-display);font-size:28px;font-weight:800;color:#fff}
-.nw-stat-box-change{font-size:11.5px;margin-top:6px;color:rgba(255,255,255,.7)}
-.nw-arrow{display:flex;align-items:center;justify-content:center;padding:0 8px;color:rgba(255,255,255,.4);font-size:20px}
+.nw-stat-box-change{font-size:11.5px;margin-top:6px;display:flex;align-items:center;gap:4px}
+.nw-arrow{display:flex;align-items:center;justify-content:center;padding:0 6px;flex-shrink:0}
 
 /* ─── SETTINGS ─── */
 .settings-tab{display:block;width:100%;text-align:left;padding:9px 12px;border:none;background:none;border-radius:var(--r-md);font-size:13px;font-weight:500;color:var(--txt3);cursor:pointer;transition:all var(--dur);font-family:inherit}
