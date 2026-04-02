@@ -308,8 +308,17 @@ button{cursor:pointer;font-family:inherit}input,select,textarea{font-family:inhe
   .btn-lg{height:40px;padding:0 18px;font-size:13px}
 }
 
+/* Document mobile cards */
+.doc-cards-mobile{display:none}
+.doc-mobile-card{padding:14px 16px;border-bottom:1px solid var(--border)}
+.doc-mobile-card:last-child{border-bottom:none}
+
 /* Fix grid layouts on tablet/mobile */
 @media(max-width:900px){
   .docs-layout{grid-template-columns:1fr !important}
   .dash-grid-2{grid-template-columns:1fr !important}
+}
+@media(max-width:768px){
+  .doc-table-desktop{display:none}
+  .doc-cards-mobile{display:block}
 }

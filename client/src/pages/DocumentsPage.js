@@ -141,6 +141,9 @@ export default function DocumentsPage({ navigate }) {
           ) : docs.length === 0 ? (
             <EmptyState icon="📄" title="No documents found" sub={search ? 'Try a different search' : 'Upload your first document to get started'} />
           ) : (
+            <>
+            {/* Desktop Table */}
+            <div className="doc-table-desktop">
             <table className="data-table">
               <thead>
                 <tr><th>Document</th><th>Status</th><th>Expiry</th><th>AI Score</th><th style={{textAlign:'right'}}>Actions</th></tr>
@@ -195,6 +198,49 @@ export default function DocumentsPage({ navigate }) {
                 ))}
               </tbody>
             </table>
+            </div>
+
+            {/* Mobile Card List */}
+            <div className="doc-cards-mobile">
+              {Object.entries(grouped).map(([name, group]) => (
+                <React.Fragment key={name}>
+                  <div className="doc-member-row">
+                    <div className="avatar" style={{ width: 24, height: 24, background: group.color, fontSize: 9 }}>{name.split(' ').map(w => w[0]).join('').slice(0, 2)}</div>
+                    {name}
+                  </div>
+                  {group.docs.map(d => {
+                    let ai = null; try { ai = d.ai_summary ? JSON.parse(d.ai_summary) : null; } catch {}
+                    return (
+                      <div key={d.id} className="doc-mobile-card">
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                          <div style={{ width: 36, height: 36, borderRadius: 'var(--r-md)', background: 'var(--surface2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>{catIcon(d.category)}</div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontWeight: 600, color: 'var(--txt)', fontSize: 13, lineHeight: 1.3 }}>{d.name}</div>
+                            {ai?.type && ai.type !== 'Document' && <div style={{ fontSize: 11, color: 'var(--txt4)' }}>{ai.type}</div>}
+                          </div>
+                          <Badge color={statusColor(d.status)}>{statusLabel(d.status)}</Badge>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 12, color: 'var(--txt3)', marginBottom: 10 }}>
+                          <span>Expiry: {d.expiry_date ? fmtDate(d.expiry_date) : 'N/A'}</span>
+                          {d.ai_analyzed && ai?.confidence && (
+                            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                              <span style={{ fontWeight: 600, color: 'var(--txt)' }}>{Math.round(ai.confidence * 100)}%</span>
+                              <span style={{ fontSize: 10, color: 'var(--txt4)' }}>AI</span>
+                              <div className="progress-track" style={{ width: 36 }}><div className="progress-fill" style={{ width: (ai.confidence * 100) + '%', background: 'var(--accent)' }} /></div>
+                            </span>
+                          )}
+                        </div>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <button className="btn btn-sm btn-teal" style={{ flex: 1 }}>View</button>
+                          <button className="btn btn-sm btn-outline" style={{ flex: 1 }}>Download</button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </React.Fragment>
+              ))}
+            </div>
+            </>
           )}
         </div>
       </div>
