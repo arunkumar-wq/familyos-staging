@@ -142,7 +142,7 @@ export default function DashboardPage({ navigate }) {
       </div>
 
       {/* Charts + Alerts Row */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+      <div className="dash-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
         {/* Portfolio Performance */}
         <div className="card">
           <div style={{ padding: '18px 20px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -182,7 +182,7 @@ export default function DashboardPage({ navigate }) {
       </div>
 
       {/* Allocation + Family Row */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+      <div className="dash-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
         {/* Asset Allocation */}
         <div className="card">
           <div style={{ padding: '18px 20px 14px' }}><div className="section-label">Asset Allocation</div></div>

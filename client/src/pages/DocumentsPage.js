@@ -119,7 +119,7 @@ export default function DocumentsPage({ navigate }) {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '240px 1fr', gap: 16 }}>
+      <div className="docs-layout" style={{ display: 'grid', gridTemplateColumns: '240px 1fr', gap: 16 }}>
         {/* Category Sidebar */}
         <div className="card" style={{ padding: 12, alignSelf: 'start' }}>
           <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.07em', color: 'var(--txt3)', padding: '8px 14px 10px' }}>Categories</div>
