@@ -44,12 +44,12 @@ export default function AuditPage() {
               </svg>
               <div style={{fontSize:13,fontWeight:700,marginTop:6,color:scoreColor(familyScore)}}>{scoreLabel}</div>
             </div>
-            <div style={{flex:1,minWidth:200}}>
+            <div style={{flex:1,minWidth:0}}>
               <h2 style={{fontSize:20,marginBottom:8}}>Vault is {familyScore}% complete</h2>
               <p style={{fontSize:13,color:'var(--txt2)',marginBottom:16}}>
                 {totalDocs} documents across {audit.length} members.{totalMissing>0?' '+totalMissing+' missing categories identified.':' All critical categories are covered.'}
               </p>
-              <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:10}}>
+              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(80px, 1fr))',gap:10}}>
                 {[[totalDocs,'Filed','teal'],[totalMissing,'Missing','amber'],[audit.filter(m=>m.score<60).length,'At Risk','red'],[audit.filter(m=>m.score>=80).length,'Complete','green']].map(([v,l,c]) => (
                   <div key={l} style={{textAlign:'center',padding:12,background:'var(--'+c+'-bg)',borderRadius:8,border:'1px solid var(--'+c+'-border)'}}>
                     <div style={{fontSize:22,fontWeight:700,color:'var(--'+c+')'}}>{v}</div>
@@ -68,7 +68,8 @@ export default function AuditPage() {
         ) : audit.length === 0 ? (
           <div style={{padding:40,textAlign:'center',color:'var(--txt3)'}}>No family members found. Add members to see audit data.</div>
         ) : (
-          <table className="data-table">
+          <div style={{overflowX:'auto',WebkitOverflowScrolling:'touch'}}>
+          <table className="data-table" style={{minWidth:700}}>
             <thead>
               <tr>
                 <th scope="col">Member</th>
@@ -105,6 +106,7 @@ export default function AuditPage() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
     </div>

@@ -66,7 +66,7 @@ export default function CalendarPage() {
       {error && !showAdd && (
         <div role="alert" style={{ background: 'var(--red-bg)', border: '1px solid var(--red-border)', borderRadius: 8, padding: '10px 14px', marginBottom: 16, color: 'var(--red)', fontSize: 13 }}>{error}</div>
       )}
-      <div style={{display:'grid',gridTemplateColumns:'1fr 340px',gap:14}}>
+      <div className="dash-grid-2" style={{display:'grid',gridTemplateColumns:'1fr 340px',gap:14}}>
         <div className="card">
           <div className="sec-bar sec-bar-teal">{monthName}</div>
           <div style={{padding:20}}>
