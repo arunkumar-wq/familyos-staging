@@ -32,7 +32,7 @@ button{cursor:pointer;font-family:inherit}input,select,textarea{font-family:inhe
 .navbar-bell{position:relative;background:none;border:none;color:rgba(255,255,255,.7);padding:6px;border-radius:var(--r-md);cursor:pointer;transition:all var(--dur);display:flex;align-items:center;justify-content:center}
 .navbar-bell:hover{color:#fff;background:rgba(255,255,255,.1)}
 .navbar-bell-dot{position:absolute;top:2px;right:1px;min-width:16px;height:16px;border-radius:var(--r-full);background:var(--red);color:#fff;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 4px;border:2px solid #1a2332;line-height:1}
-.navbar-bell-dropdown.navbar-bell-dropdown{position:fixed;top:calc(var(--navbar-h) + 4px);right:28px;left:auto;width:360px;max-height:420px;overflow-y:auto;margin-top:0;z-index:210}
+.navbar-bell-dropdown.navbar-bell-dropdown{position:fixed;top:calc(var(--navbar-h) + 4px);right:28px;left:auto;width:360px;max-height:420px;overflow-y:auto;margin-top:0;z-index:210;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--shadow-xl);padding:0}
 .navbar-mobile-btn{display:none;background:none;border:none;color:#fff;padding:6px}
 .navbar-more-wrap{position:relative}
 .navbar-mobile-extra{display:none}
