@@ -4,13 +4,14 @@ import { PageHeader, Badge, StatCard } from '../components/UI';
 
 // Default insights — will be shown alongside any real alerts
 const STATIC_INSIGHTS = [
-  { id:'s1',sev:'warning',tag:'REVIEW',tagClr:'amber',bdrClr:'var(--amber)',title:'Review your will and estate documents',body:'Legal experts recommend reviewing wills every 3-5 years, especially after major life changes like property acquisition or family changes.',actions:[['outline','View Documents']] },
-  { id:'s2',sev:'info',tag:'OPTIMIZE',tagClr:'blue',bdrClr:'var(--blue)',title:'Check FD rates for better returns',body:'Interest rates change frequently. Compare your current FD rates with the latest offerings from major banks to maximize returns.',actions:[['outline','View Portfolio']] },
+  { id:'s1',sev:'warning',tag:'REVIEW',tagClr:'amber',bdrClr:'var(--amber)',title:'Review your will and estate documents',body:'Legal experts recommend reviewing wills every 3-5 years, especially after major life changes like property acquisition or family changes.',actions:[['outline','View Documents','documents']] },
+  { id:'s2',sev:'info',tag:'OPTIMIZE',tagClr:'blue',bdrClr:'var(--blue)',title:'Check FD rates for better returns',body:'Interest rates change frequently. Compare your current FD rates with the latest offerings from major banks to maximize returns.',actions:[['outline','View Portfolio','portfolio']] },
 ];
 
-export default function InsightsPage() {
+export default function InsightsPage({ navigate }) {
   const [alerts, setAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [analyzing, setAnalyzing] = useState(false);
 
   useEffect(() => {
     api.get('/alerts')
@@ -32,7 +33,7 @@ export default function InsightsPage() {
     bdrClr: a.severity === 'critical' ? 'var(--red)' : a.severity === 'warning' ? 'var(--amber)' : 'var(--teal)',
     title: a.title,
     body: a.description || a.message || '',
-    actions: [['outline', 'View Details']],
+    actions: [['outline', 'View Details', 'notifications']],
   }));
 
   const allInsights = [...dynamicInsights, ...STATIC_INSIGHTS];
@@ -40,8 +41,8 @@ export default function InsightsPage() {
   return (
     <div className="page-inner" style={{ maxWidth:900 }}>
       <PageHeader title="AI Insights" sub="Proactive intelligence across your vault and finances">
-        <button className="btn btn-outline">Preferences</button>
-        <button className="btn btn-teal">Run Analysis</button>
+        <button className="btn btn-outline" onClick={() => navigate && navigate('settings')}>Preferences</button>
+        <button className="btn btn-teal" onClick={() => { setAnalyzing(true); api.get('/alerts').then(r => setAlerts(r.data || [])).finally(() => setAnalyzing(false)); }} disabled={analyzing}>{analyzing ? 'Analyzing...' : 'Run Analysis'}</button>
       </PageHeader>
       <div className="mini-stats-strip">
         {[
@@ -74,8 +75,8 @@ export default function InsightsPage() {
                 <div className="insight-card-title">{ins.title}</div>
                 <div className="insight-card-body">{ins.body}</div>
                 <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginTop:8 }}>
-                  {ins.actions.map(([v,label]) => (
-                    <button key={label} className={'btn btn-'+(v==='primary'?'primary':'outline')+' btn-xs'}>{label}</button>
+                  {ins.actions.map(([v,label,target]) => (
+                    <button key={label} className={'btn btn-'+(v==='primary'?'primary':'outline')+' btn-xs'} onClick={() => navigate && target && navigate(target)}>{label}</button>
                   ))}
                 </div>
               </div>

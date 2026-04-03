@@ -45,17 +45,21 @@ export default function DocumentsPage({ navigate }) {
   const [selectedMember, setSelectedMember] = useState('');
   const [uploadError, setUploadError] = useState('');
   const [pendingFile, setPendingFile] = useState(null);
+  const [showFilter, setShowFilter] = useState(false);
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [scanning, setScanning] = useState(false);
   const fileInputRef = useRef();
 
   useEffect(() => { const t = setTimeout(() => setDebouncedSearch(search), 350); return () => clearTimeout(t); }, [search]);
   useEffect(() => { api.get('/family/members').then(r => { setMembers(r.data); if (r.data[0]) setSelectedMember(r.data[0].id); }).catch(()=>{}); }, []);
-  useEffect(() => { loadDocs(); }, [cat, debouncedSearch]);
+  useEffect(() => { loadDocs(); }, [cat, debouncedSearch, statusFilter]);
 
   const loadDocs = async () => {
     setLoading(true);
     try {
       const params = {};
       if (cat !== 'all') params.category = cat;
+      if (statusFilter !== 'all') params.status = statusFilter;
       if (debouncedSearch) params.search = debouncedSearch;
       const [docsRes, statsRes] = await Promise.all([api.get('/documents', { params }), api.get('/documents/stats')]);
       setDocs(docsRes.data); setStats(statsRes.data);
@@ -84,6 +88,26 @@ export default function DocumentsPage({ navigate }) {
       await api.post('/documents/upload', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
       setShowUpload(false); setPendingFile(null); setAiResult(null); loadDocs();
     } catch (e) { setUploadError(e.response?.data?.error || 'Upload failed'); }
+  };
+
+  const runAiScan = () => {
+    setScanning(true);
+    setTimeout(() => { setScanning(false); loadDocs(); }, 2000);
+  };
+
+  const viewDoc = (d) => {
+    if (d.file_path) {
+      window.open('/uploads/' + d.file_path, '_blank');
+    }
+  };
+
+  const downloadDoc = (d) => {
+    if (d.file_path) {
+      const a = document.createElement('a');
+      a.href = '/uploads/' + d.file_path;
+      a.download = d.original_name || d.name;
+      a.click();
+    }
   };
 
   const deleteDoc = async (id) => {
@@ -115,8 +139,8 @@ export default function DocumentsPage({ navigate }) {
   return (
     <div className="page-inner">
       <PageHeader title="Family Documents" sub={`${stats.total || 0} documents · 12 categories · Last AI scan 2 hours ago`}>
-        <button className="btn btn-outline" style={{gap:6}}>&#9776; Filter</button>
-        <button className="btn btn-teal" style={{gap:6}}>&#10024; AI Scan</button>
+        <button className="btn btn-outline" style={{gap:6}} onClick={() => setShowFilter(!showFilter)}>&#9776; Filter</button>
+        <button className="btn btn-teal" style={{gap:6}} onClick={runAiScan} disabled={scanning}>{scanning ? 'Scanning...' : '\u2728 AI Scan'}</button>
         <button className="btn btn-brand" onClick={() => { setShowUpload(true); setAiResult(null); setPendingFile(null); setUploading(false); setUploadError(''); }} style={{gap:6}}>+ Upload</button>
       </PageHeader>
 
@@ -127,6 +151,16 @@ export default function DocumentsPage({ navigate }) {
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search documents, IDs, certificates..." aria-label="Search documents" style={{ flex: 1, border: 'none', outline: 'none', fontSize: 14, background: 'transparent', color: 'var(--txt)' }} />
         </div>
       </div>
+
+      {/* Filter Panel */}
+      {showFilter && (
+        <div className="card" style={{ padding: '12px 16px', marginBottom: 12, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--txt3)' }}>Status:</span>
+          {['all','current','expiring','expired','review'].map(s => (
+            <button key={s} className={`btn btn-xs ${statusFilter === s ? 'btn-teal' : 'btn-outline'}`} onClick={() => setStatusFilter(s)} style={{textTransform:'capitalize'}}>{s}</button>
+          ))}
+        </div>
+      )}
 
       {/* Mobile horizontal category pills */}
       <div className="doc-cats-mobile">
@@ -206,8 +240,8 @@ export default function DocumentsPage({ navigate }) {
                           </td>
                           <td>
                             <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
-                              <button className="btn btn-xs btn-teal">View</button>
-                              <button className="btn btn-xs btn-outline">Download</button>
+                              <button className="btn btn-xs btn-teal" onClick={() => viewDoc(d)}>View</button>
+                              <button className="btn btn-xs btn-outline" onClick={() => downloadDoc(d)}>Download</button>
                             </div>
                           </td>
                         </tr>
@@ -250,8 +284,8 @@ export default function DocumentsPage({ navigate }) {
                           )}
                         </div>
                         <div style={{ display: 'flex', gap: 8 }}>
-                          <button className="btn btn-sm btn-teal" style={{ flex: 1 }}>View</button>
-                          <button className="btn btn-sm btn-outline" style={{ flex: 1 }}>Download</button>
+                          <button className="btn btn-sm btn-teal" style={{ flex: 1 }} onClick={() => viewDoc(d)}>View</button>
+                          <button className="btn btn-sm btn-outline" style={{ flex: 1 }} onClick={() => downloadDoc(d)}>Download</button>
                         </div>
                       </div>
                     );

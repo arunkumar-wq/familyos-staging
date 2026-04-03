@@ -56,8 +56,8 @@ function AppShell() {
       case 'documents':     return <DocumentsPage navigate={navigate} />;
       case 'portfolio':     return <PortfolioPage />;
       case 'family':        return <FamilyPage navigate={navigate} />;
-      case 'insights':      return <InsightsPage />;
-      case 'audit':         return <AuditPage />;
+      case 'insights':      return <InsightsPage navigate={navigate} />;
+      case 'audit':         return <AuditPage navigate={navigate} />;
       case 'calendar':      return <CalendarPage />;
       case 'notifications': return <NotificationsPage />;
       case 'settings':      return <SettingsPage navigate={navigate} />;

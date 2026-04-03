@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import api from '../utils/api';
 import { PageHeader, Badge } from '../components/UI';
-export default function AuditPage() {
+export default function AuditPage({ navigate }) {
   const [audit, setAudit] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [rerunning, setRerunning] = useState(false);
 
   useEffect(() => {
     api.get('/family/audit')
@@ -12,6 +13,27 @@ export default function AuditPage() {
       .catch(e => setError('Failed to load audit data'))
       .finally(() => setLoading(false));
   }, []);
+
+  const rerunAudit = () => {
+    setRerunning(true); setError('');
+    api.get('/family/audit')
+      .then(r => setAudit(Array.isArray(r.data) ? r.data : []))
+      .catch(() => setError('Audit failed'))
+      .finally(() => setRerunning(false));
+  };
+
+  const exportAudit = () => {
+    const rows = [['Member','Identity','Legal','Medical','Finance','Insurance','Score']];
+    audit.forEach(m => {
+      rows.push([m.first_name + ' ' + m.last_name, ...['identity','legal','medical','finance','insurance'].map(c => m.categoryBreakdown[c] || 0), m.score + '%']);
+    });
+    const csv = rows.map(r => r.join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'vault-audit.csv'; a.click();
+    URL.revokeObjectURL(url);
+  };
 
   const familyScore = audit.length ? Math.round(audit.reduce((s,m)=>s+m.score,0)/audit.length) : 0;
   const scoreColor = s => s>=80?'var(--green)':s>=60?'var(--amber)':'var(--red)';
@@ -25,8 +47,8 @@ export default function AuditPage() {
   return (
     <div className="page-inner">
       <PageHeader title="Vault Audit" sub="AI-powered document vault health check">
-        <button className="btn btn-outline">Export</button>
-        <button className="btn btn-teal">Re-run Audit</button>
+        <button className="btn btn-outline" onClick={exportAudit}>Export CSV</button>
+        <button className="btn btn-teal" onClick={rerunAudit} disabled={rerunning}>{rerunning ? 'Running...' : 'Re-run Audit'}</button>
       </PageHeader>
       {error && (
         <div role="alert" style={{ background: 'var(--red-bg)', border: '1px solid var(--red-border)', borderRadius: 8, padding: '10px 14px', marginBottom: 16, color: 'var(--red)', fontSize: 13 }}>{error}</div>
@@ -101,7 +123,7 @@ export default function AuditPage() {
                       <span style={{fontSize:12,fontWeight:700,color:scoreColor(m.score)}}>{m.score}%</span>
                     </div>
                   </td>
-                  <td style={{textAlign:'right'}}><button className="btn btn-outline btn-sm">Upload Missing</button></td>
+                  <td style={{textAlign:'right'}}><button className="btn btn-outline btn-sm" onClick={() => navigate && navigate('documents')}>Upload Missing</button></td>
                 </tr>
               ))}
             </tbody>

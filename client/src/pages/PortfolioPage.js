@@ -8,6 +8,7 @@ Chart.register(...registerables);
 export default function PortfolioPage() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [period, setPeriod] = useState('24M');
   const lineRef = useRef(); const lineChart = useRef();
 
   useEffect(() => { api.get('/portfolio/summary').then(r => setData(r.data)).catch(()=>{}).finally(() => setLoading(false)); }, []);
@@ -16,17 +17,20 @@ export default function PortfolioPage() {
   useEffect(() => {
     if (!data?.snapshots?.length || !lineRef.current) return;
     if (lineChart.current) lineChart.current.destroy();
+    const periodMap = { '6M': 6, '12M': 12, '24M': 24, 'ALL': 999 };
+    const sliceCount = periodMap[period] || 24;
+    const snapshots = data.snapshots.slice(-sliceCount);
     const ctx = lineRef.current.getContext('2d');
     const grad = ctx.createLinearGradient(0, 0, 0, 250);
     grad.addColorStop(0, 'rgba(10,158,158,.1)'); grad.addColorStop(1, 'rgba(10,158,158,0)');
     lineChart.current = new Chart(ctx, {
       type: 'line',
       data: {
-        labels: data.snapshots.map(s => new Date(s.snapshot_date).toLocaleDateString('en-US', { month: 'short' })),
+        labels: snapshots.map(s => new Date(s.snapshot_date).toLocaleDateString('en-US', { month: 'short' })),
         datasets: [
-          { label: 'Net Worth', data: data.snapshots.map(s => s.net_worth), borderColor: '#0a9e9e', backgroundColor: grad, fill: true, tension: 0.4, pointRadius: 2, borderWidth: 2.5 },
-          { label: 'Assets', data: data.snapshots.map(s => s.total_assets), borderColor: '#3883f6', borderDash: [], tension: 0.4, pointRadius: 0, borderWidth: 1.5 },
-          { label: 'Liabilities', data: data.snapshots.map(s => s.total_liabilities), borderColor: '#dc2626', borderDash: [5, 5], tension: 0.4, pointRadius: 0, borderWidth: 1.5 },
+          { label: 'Net Worth', data: snapshots.map(s => s.net_worth), borderColor: '#0a9e9e', backgroundColor: grad, fill: true, tension: 0.4, pointRadius: 2, borderWidth: 2.5 },
+          { label: 'Assets', data: snapshots.map(s => s.total_assets), borderColor: '#3883f6', borderDash: [], tension: 0.4, pointRadius: 0, borderWidth: 1.5 },
+          { label: 'Liabilities', data: snapshots.map(s => s.total_liabilities), borderColor: '#dc2626', borderDash: [5, 5], tension: 0.4, pointRadius: 0, borderWidth: 1.5 },
         ],
       },
       options: {
@@ -36,7 +40,7 @@ export default function PortfolioPage() {
       },
     });
     return () => { if (lineChart.current) lineChart.current.destroy(); };
-  }, [data]);
+  }, [data, period]);
 
   if (loading) return <div className="page-inner"><div style={{ padding: 60, textAlign: 'center', color: 'var(--txt3)' }}>Loading portfolio...</div></div>;
 
@@ -99,7 +103,7 @@ export default function PortfolioPage() {
             <div className="section-label">Net Worth Trend (24 Months)</div>
             <div style={{ display: 'flex', gap: 4 }}>
               {['6M', '12M', '24M', 'ALL'].map(p => (
-                <button key={p} className={`btn btn-xs ${p === '24M' ? 'btn-teal' : 'btn-outline'}`}>{p}</button>
+                <button key={p} className={`btn btn-xs ${p === period ? 'btn-teal' : 'btn-outline'}`} onClick={() => setPeriod(p)}>{p}</button>
               ))}
             </div>
           </div>
