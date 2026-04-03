@@ -104,37 +104,33 @@ export default function DocumentsPage({ navigate }) {
     }
   };
 
-  const triggerDownload = (url, filename) => {
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    a.style.display = 'none';
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 1000);
-  };
+  const downloadDoc = async (d) => {
+    try {
+      const token = localStorage.getItem('fos_token');
+      const resp = await fetch('/api/documents/' + d.id + '/download', {
+        headers: { Authorization: 'Bearer ' + token }
+      });
+      if (!resp.ok) throw new Error('Download failed');
+      const blob = await resp.blob();
+      const filename = resp.headers.get('Content-Disposition')?.match(/filename="?([^"]+)"?/)?.[1] || d.name + '.txt';
 
-  const downloadDoc = (d) => {
-    if (d.file_path) {
-      // For real files: fetch as blob to force download on all platforms
-      fetch('/uploads/' + d.file_path)
-        .then(r => r.blob())
-        .then(blob => {
-          const url = URL.createObjectURL(blob);
-          triggerDownload(url, d.original_name || d.name);
-        })
-        .catch(() => {
-          // Fallback: open in new tab
-          window.open('/uploads/' + d.file_path, '_blank');
-        });
-    } else {
-      // Generate text summary for seeded docs
-      let ai = null; try { ai = d.ai_summary ? JSON.parse(d.ai_summary) : null; } catch {}
-      const lines = [`Document: ${d.name}`, `Category: ${d.category}`, `Status: ${d.status}`, `Expiry: ${d.expiry_date || 'N/A'}`, `Member: ${d.member_name || 'Unknown'}`, '', '--- AI Analysis ---'];
-      if (ai) { Object.entries(ai).forEach(([k, v]) => lines.push(`${k}: ${v}`)); }
-      const blob = new Blob([lines.join('\n')], { type: 'application/octet-stream' });
+      // iOS Safari: window.open with blob URL works when user-initiated
       const url = URL.createObjectURL(blob);
-      triggerDownload(url, d.name.replace(/[^a-zA-Z0-9 ]/g, '') + '.txt');
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      if (isIOS) {
+        // On iOS, open blob in new tab (Safari will show save/share prompt)
+        window.open(url, '_blank');
+      } else {
+        // Desktop + Android: use anchor with download attribute
+        const a = document.createElement('a');
+        a.href = url; a.download = decodeURIComponent(filename);
+        a.style.display = 'none';
+        document.body.appendChild(a); a.click();
+        setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 2000);
+      }
+    } catch {
+      // Final fallback: open document detail modal
+      setViewingDoc(d);
     }
   };
 

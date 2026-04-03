@@ -73,6 +73,56 @@ router.get('/stats', auth, (req, res) => {
   }
 });
 
+// GET /api/documents/:id/download — MUST be before /:id to avoid route conflict
+router.get('/:id/download', auth, (req, res) => {
+  try {
+    const db = getDb();
+    const doc = db.prepare(`
+      SELECT d.*, u.first_name || ' ' || u.last_name as member_name
+      FROM documents d LEFT JOIN users u ON u.id = d.owner_id
+      WHERE d.id = ? AND d.family_id = ?
+    `).get(req.params.id, req.user.family_id);
+    if (!doc) return res.status(404).json({ error: 'Document not found' });
+
+    if (req.user.vault === 'own' && doc.owner_id !== req.user.id) {
+      return res.status(403).json({ error: 'Permission denied' });
+    }
+
+    // If real file exists, serve it
+    if (doc.file_path) {
+      const filePath = path.join(__dirname, '..', '..', 'uploads', doc.file_path);
+      const fs = require('fs');
+      if (fs.existsSync(filePath)) {
+        const filename = doc.original_name || doc.name;
+        res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(filename)}"`);
+        res.setHeader('Content-Type', doc.mime_type || 'application/octet-stream');
+        return fs.createReadStream(filePath).pipe(res);
+      }
+    }
+
+    // For seeded docs: generate a text summary
+    let ai = null;
+    try { ai = doc.ai_summary ? JSON.parse(doc.ai_summary) : null; } catch {}
+    const lines = [
+      `FamilyOS Document Summary`, `========================`, ``,
+      `Name: ${doc.name}`, `Category: ${doc.category}`, `Status: ${doc.status}`,
+      `Expiry: ${doc.expiry_date || 'N/A'}`, `Member: ${doc.member_name || 'Unknown'}`,
+      `File Size: ${doc.file_size || 'N/A'}`, `AI Analyzed: ${doc.ai_analyzed ? 'Yes' : 'No'}`, ``,
+    ];
+    if (ai) { lines.push(`--- AI Analysis ---`); Object.entries(ai).forEach(([k, v]) => lines.push(`${k}: ${v}`)); }
+
+    const content = lines.join('\n');
+    const filename = doc.name.replace(/[^a-zA-Z0-9 .-]/g, '') + '.txt';
+    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(filename)}"`);
+    res.setHeader('Content-Type', 'application/octet-stream');
+    res.setHeader('Content-Length', Buffer.byteLength(content));
+    res.send(content);
+  } catch (err) {
+    console.error('GET /documents/:id/download error:', err.message);
+    res.status(500).json({ error: 'Download failed' });
+  }
+});
+
 // GET /api/documents/:id
 router.get('/:id', auth, (req, res) => {
   try {
