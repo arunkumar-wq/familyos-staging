@@ -104,22 +104,37 @@ export default function DocumentsPage({ navigate }) {
     }
   };
 
+  const triggerDownload = (url, filename) => {
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 1000);
+  };
+
   const downloadDoc = (d) => {
     if (d.file_path) {
-      const a = document.createElement('a');
-      a.href = '/uploads/' + d.file_path;
-      a.download = d.original_name || d.name;
-      a.click();
+      // For real files: fetch as blob to force download on all platforms
+      fetch('/uploads/' + d.file_path)
+        .then(r => r.blob())
+        .then(blob => {
+          const url = URL.createObjectURL(blob);
+          triggerDownload(url, d.original_name || d.name);
+        })
+        .catch(() => {
+          // Fallback: open in new tab
+          window.open('/uploads/' + d.file_path, '_blank');
+        });
     } else {
-      // Generate a text summary as downloadable file
+      // Generate text summary for seeded docs
       let ai = null; try { ai = d.ai_summary ? JSON.parse(d.ai_summary) : null; } catch {}
       const lines = [`Document: ${d.name}`, `Category: ${d.category}`, `Status: ${d.status}`, `Expiry: ${d.expiry_date || 'N/A'}`, `Member: ${d.member_name || 'Unknown'}`, '', '--- AI Analysis ---'];
       if (ai) { Object.entries(ai).forEach(([k, v]) => lines.push(`${k}: ${v}`)); }
-      const blob = new Blob([lines.join('\n')], { type: 'text/plain' });
+      const blob = new Blob([lines.join('\n')], { type: 'application/octet-stream' });
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = d.name.replace(/[^a-zA-Z0-9 ]/g, '') + '.txt'; a.click();
-      URL.revokeObjectURL(url);
+      triggerDownload(url, d.name.replace(/[^a-zA-Z0-9 ]/g, '') + '.txt');
     }
   };
 
