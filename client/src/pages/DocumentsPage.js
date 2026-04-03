@@ -48,6 +48,7 @@ export default function DocumentsPage({ navigate }) {
   const [showFilter, setShowFilter] = useState(false);
   const [statusFilter, setStatusFilter] = useState('all');
   const [scanning, setScanning] = useState(false);
+  const [viewingDoc, setViewingDoc] = useState(null);
   const fileInputRef = useRef();
 
   useEffect(() => { const t = setTimeout(() => setDebouncedSearch(search), 350); return () => clearTimeout(t); }, [search]);
@@ -98,6 +99,8 @@ export default function DocumentsPage({ navigate }) {
   const viewDoc = (d) => {
     if (d.file_path) {
       window.open('/uploads/' + d.file_path, '_blank');
+    } else {
+      setViewingDoc(d);
     }
   };
 
@@ -107,6 +110,16 @@ export default function DocumentsPage({ navigate }) {
       a.href = '/uploads/' + d.file_path;
       a.download = d.original_name || d.name;
       a.click();
+    } else {
+      // Generate a text summary as downloadable file
+      let ai = null; try { ai = d.ai_summary ? JSON.parse(d.ai_summary) : null; } catch {}
+      const lines = [`Document: ${d.name}`, `Category: ${d.category}`, `Status: ${d.status}`, `Expiry: ${d.expiry_date || 'N/A'}`, `Member: ${d.member_name || 'Unknown'}`, '', '--- AI Analysis ---'];
+      if (ai) { Object.entries(ai).forEach(([k, v]) => lines.push(`${k}: ${v}`)); }
+      const blob = new Blob([lines.join('\n')], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = d.name.replace(/[^a-zA-Z0-9 ]/g, '') + '.txt'; a.click();
+      URL.revokeObjectURL(url);
     }
   };
 
@@ -346,6 +359,40 @@ export default function DocumentsPage({ navigate }) {
           )}
         </Modal>
       )}
+      {viewingDoc && (() => {
+        let ai = null; try { ai = viewingDoc.ai_summary ? JSON.parse(viewingDoc.ai_summary) : null; } catch {}
+        return (
+          <Modal title="Document Details" onClose={() => setViewingDoc(null)} maxWidth={500}
+            footer={<><button className="btn btn-outline" onClick={() => { downloadDoc(viewingDoc); }}>Download</button><button className="btn btn-teal" onClick={() => setViewingDoc(null)}>Close</button></>}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+              <div style={{ width: 44, height: 44, borderRadius: 'var(--r-md)', background: 'var(--surface2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>{catIcon(viewingDoc.category)}</div>
+              <div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--txt)' }}>{viewingDoc.name}</div>
+                <div style={{ fontSize: 12, color: 'var(--txt3)' }}>{viewingDoc.member_name || 'Unknown member'}</div>
+              </div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+              {[['Category', viewingDoc.category], ['Status', viewingDoc.status], ['Expiry', viewingDoc.expiry_date ? fmtDate(viewingDoc.expiry_date) : 'N/A'], ['Size', viewingDoc.file_size || 'N/A']].map(([k, v]) => (
+                <div key={k} style={{ padding: '8px 12px', background: 'var(--surface2)', borderRadius: 'var(--r-md)' }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: 'var(--txt4)', marginBottom: 2 }}>{k}</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--txt)', textTransform: 'capitalize' }}>{v}</div>
+                </div>
+              ))}
+            </div>
+            {ai && (
+              <div className="ai-result-box">
+                <div className="ai-result-title">AI Analysis</div>
+                {Object.entries(ai).filter(([k]) => k !== 'confidence').map(([k, v]) => (
+                  <div key={k} className="ai-field" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ textTransform: 'capitalize' }}>{k.replace(/([A-Z])/g, ' $1')}</span>
+                    <span style={{ fontWeight: 600 }}>{String(v)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Modal>
+        );
+      })()}
     </div>
   );
 }
