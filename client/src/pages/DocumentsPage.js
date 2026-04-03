@@ -128,9 +128,19 @@ export default function DocumentsPage({ navigate }) {
         </div>
       </div>
 
+      {/* Mobile horizontal category pills */}
+      <div className="doc-cats-mobile">
+        {CATS.map(c => (
+          <button key={c.id} className={`doc-cat-pill${cat === c.id ? ' active' : ''}`} onClick={() => setCat(c.id)}>
+            <span>{c.icon}</span> {c.label.replace('Documents','Docs').replace('Policies','').replace('& Tax','').replace('& Legal','').replace('& Medical','').replace('& Home','').trim()}
+            {catCounts[c.id] > 0 && <span className="doc-cat-pill-count">{catCounts[c.id]}</span>}
+          </button>
+        ))}
+      </div>
+
       <div className="docs-layout" style={{ display: 'grid', gridTemplateColumns: '240px 1fr', gap: 16 }}>
-        {/* Category Sidebar */}
-        <div className="card" style={{ padding: 12, alignSelf: 'start' }}>
+        {/* Category Sidebar - desktop only */}
+        <div className="card docs-sidebar-desktop" style={{ padding: 12, alignSelf: 'start' }}>
           <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.07em', color: 'var(--txt3)', padding: '8px 14px 10px' }}>Categories</div>
           <div className="doc-categories">
             {CATS.map(c => (

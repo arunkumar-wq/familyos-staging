@@ -43,35 +43,40 @@ export default function InsightsPage() {
         <button className="btn btn-outline">Preferences</button>
         <button className="btn btn-teal">Run Analysis</button>
       </PageHeader>
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(155px,1fr))', gap:14, marginBottom:22 }}>
-        <StatCard icon="!" iconBg="var(--red-bg)"    label="Urgent"       value={urgentAlerts.length}  sub="Action required"   accent="red"    />
-        <StatCard icon="~" iconBg="var(--amber-bg)"  label="Warnings"     value={warningAlerts.length}  sub="Review recommended" accent="amber"  />
-        <StatCard icon="*" iconBg="var(--teal-bg)"   label="Suggestions"  value={allInsights.length}  sub="Insights available" subUp accent="teal" />
-        <StatCard icon="+" iconBg="var(--purple-bg)" label="Total Alerts" value={alerts.length} sub="All time"        accent="purple" />
+      <div className="mini-stats-strip">
+        {[
+          { label: 'Urgent', value: urgentAlerts.length, color: 'var(--red)' },
+          { label: 'Warnings', value: warningAlerts.length, color: 'var(--amber)' },
+          { label: 'Suggestions', value: allInsights.length, color: 'var(--accent)' },
+          { label: 'Total', value: alerts.length, color: 'var(--purple)' },
+        ].map(s => (
+          <div key={s.label} className="mini-stat">
+            <span className="mini-stat-value" style={{color:s.color}}>{s.value}</span>
+            <span className="mini-stat-label">{s.label}</span>
+          </div>
+        ))}
       </div>
       {loading ? (
         <div style={{ padding: 40, textAlign: 'center', color: 'var(--txt3)' }}>Loading insights...</div>
       ) : (
-        <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+        <div className="insights-grid">
           {allInsights.length === 0 ? (
-            <div style={{ padding: 40, textAlign: 'center', color: 'var(--txt3)' }}>No insights at this time. Everything looks good!</div>
+            <div style={{ padding: 40, textAlign: 'center', color: 'var(--txt3)', gridColumn:'1/-1' }}>No insights at this time. Everything looks good!</div>
           ) : allInsights.map(ins => (
             <div key={ins.id} className="card insight-card" style={{ borderLeftColor:ins.bdrClr }}>
-              <div style={{ display:'flex', gap:14, padding:16 }}>
-                <div className="insight-icon" style={{ background:'var(--'+ins.tagClr+'-bg)', flexShrink:0 }} aria-hidden="true">
-                  {ins.sev==='urgent'?'!':ins.sev==='warning'?'~':'*'}
+              <div className="insight-card-inner">
+                <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:6 }}>
+                  <div className="insight-icon-sm" style={{ background:'var(--'+ins.tagClr+'-bg)' }} aria-hidden="true">
+                    {ins.sev==='urgent'?'!':ins.sev==='warning'?'~':'*'}
+                  </div>
+                  <Badge color={ins.tagClr}>{ins.tag}</Badge>
                 </div>
-                <div style={{ flex:1 }}>
-                  <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:5 }}>
-                    <Badge color={ins.tagClr}>{ins.tag}</Badge>
-                  </div>
-                  <div style={{ fontSize:14, fontWeight:600, color:'var(--txt)', marginBottom:6 }}>{ins.title}</div>
-                  <div style={{ fontSize:13, color:'var(--txt2)', lineHeight:1.6, marginBottom:12 }}>{ins.body}</div>
-                  <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-                    {ins.actions.map(([v,label]) => (
-                      <button key={label} className={'btn btn-'+(v==='primary'?'primary':'outline')+' btn-sm'}>{label}</button>
-                    ))}
-                  </div>
+                <div className="insight-card-title">{ins.title}</div>
+                <div className="insight-card-body">{ins.body}</div>
+                <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginTop:8 }}>
+                  {ins.actions.map(([v,label]) => (
+                    <button key={label} className={'btn btn-'+(v==='primary'?'primary':'outline')+' btn-xs'}>{label}</button>
+                  ))}
                 </div>
               </div>
             </div>

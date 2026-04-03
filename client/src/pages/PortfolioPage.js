@@ -44,7 +44,7 @@ export default function PortfolioPage() {
 
   return (
     <div className="page-inner">
-      <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 800, marginBottom: 24 }}>Net Worth &amp; Financial Portfolio</h1>
+      <h1 className="dash-greeting-title" style={{ marginBottom: 20 }}>Net Worth &amp; Financial Portfolio</h1>
 
       {/* Hero Banner */}
       <div className="nw-banner">

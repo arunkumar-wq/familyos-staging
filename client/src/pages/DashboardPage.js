@@ -94,51 +94,41 @@ export default function DashboardPage({ navigate }) {
   return (
     <div className="page-inner">
       {/* Greeting */}
-      <div style={{ marginBottom: 24 }}>
-        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 800, color: 'var(--txt)' }}>
+      <div className="dash-greeting">
+        <h1 className="dash-greeting-title">
           {greet}, {user?.first_name || 'there'}
         </h1>
-        <p style={{ fontSize: 14, color: 'var(--txt3)', marginTop: 4 }}>
+        <p className="dash-greeting-sub">
           Your family overview for {fmtDateFull(new Date())}
         </p>
       </div>
 
       {/* Stat Cards Row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 24 }}>
-        <div className="card stat-card">
-          <div className="stat-card-label">Total Net Worth</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div className="stat-card-value">{loading ? '...' : fmtK(nw)}</div>
-            <span className="badge badge-green" style={{fontSize:11}}>+5.3%</span>
+      <div className="dash-stats-grid">
+        {[
+          { label: 'Total Net Worth', value: loading ? '...' : fmtK(nw), badge: '+5.3%', badgeColor: 'green', sub: '\u2191 $142K vs last quarter', subClass: 'up', accent: '#0a9e9e',
+            icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0a9e9e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg> },
+          { label: 'Documents', value: loading ? '...' : (stats.docsCount || 0), badge: `${stats.expiringCount || 0} expiring`, badgeColor: 'amber', sub: 'Across 12 categories', accent: '#3883f6',
+            icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3883f6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8m8 4H8"/></svg> },
+          { label: 'Family Members', value: loading ? '...' : (stats.membersCount || 0), badge: 'Active', badgeColor: 'green', sub: 'All access verified', accent: '#7c3aed',
+            icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg> },
+          { label: 'AI Alerts', value: loading ? '...' : (stats.alertsCount || 0), badge: alerts.filter(a=>a.severity==='critical').length > 0 ? `${alerts.filter(a=>a.severity==='critical').length} urgent` : null, badgeColor: 'red', sub: 'Action required', accent: '#dc2626',
+            icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg> },
+        ].map(card => (
+          <div key={card.label} className="card dash-stat-card" style={{ borderLeft: `3px solid ${card.accent}` }}>
+            <div className="dash-stat-card-top">
+              <div className="dash-stat-card-icon" style={{ background: card.accent + '12' }}>{card.icon}</div>
+              <div className="dash-stat-card-info">
+                <div className="dash-stat-card-label">{card.label}</div>
+                <div className="dash-stat-card-row">
+                  <span className="dash-stat-card-value">{card.value}</span>
+                  {card.badge && <span className={`badge badge-${card.badgeColor}`} style={{fontSize:10}}>{card.badge}</span>}
+                </div>
+              </div>
+            </div>
+            <div className={`dash-stat-card-sub${card.subClass ? ' ' + card.subClass : ''}`}>{card.sub}</div>
           </div>
-          <div className="stat-card-sub up">&#8593; $142K vs last quarter</div>
-        </div>
-        <div className="card stat-card">
-          <div className="stat-card-label">Documents</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div className="stat-card-value">{loading ? '...' : stats.docsCount || 0}</div>
-            <span className="badge badge-amber" style={{fontSize:11}}>{stats.expiringCount || 0} expiring</span>
-          </div>
-          <div className="stat-card-sub">Across 12 categories</div>
-        </div>
-        <div className="card stat-card">
-          <div className="stat-card-label">Family Members</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div className="stat-card-value">{loading ? '...' : stats.membersCount || 0}</div>
-            <span className="badge badge-green" style={{fontSize:11}}>Active</span>
-          </div>
-          <div className="stat-card-sub">All access verified</div>
-        </div>
-        <div className="card stat-card">
-          <div className="stat-card-label">AI Alerts</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div className="stat-card-value">{loading ? '...' : stats.alertsCount || 0}</div>
-            {alerts.filter(a=>a.severity==='critical').length > 0 && (
-              <span className="badge badge-red" style={{fontSize:11}}>{alerts.filter(a=>a.severity==='critical').length} urgent</span>
-            )}
-          </div>
-          <div className="stat-card-sub">Action required</div>
-        </div>
+        ))}
       </div>
 
       {/* Charts + Alerts Row */}
@@ -151,7 +141,7 @@ export default function DashboardPage({ navigate }) {
               <option>Net Worth</option>
             </select>
           </div>
-          <div style={{ padding: '0 20px 20px', height: 240 }}><canvas ref={lineRef} /></div>
+          <div className="dash-chart-wrap"><canvas ref={lineRef} /></div>
         </div>
 
         {/* AI Alerts Grid */}

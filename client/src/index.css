@@ -63,6 +63,17 @@ button{cursor:pointer;font-family:inherit}input,select,textarea{font-family:inhe
 .stat-card-sub{font-size:12px;margin-top:8px;display:flex;align-items:center;gap:4px;color:var(--txt3);flex-wrap:wrap}
 .stat-card-sub.up{color:var(--green)}.stat-card-sub.down{color:var(--red)}
 
+/* ─── DASHBOARD STAT CARDS (new compact) ─── */
+.dash-stat-card{padding:14px 16px;border-radius:var(--r-lg);display:flex;flex-direction:column;gap:6px}
+.dash-stat-card-top{display:flex;align-items:center;gap:12px}
+.dash-stat-card-icon{width:38px;height:38px;border-radius:var(--r-md);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.dash-stat-card-info{flex:1;min-width:0}
+.dash-stat-card-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--txt3);margin-bottom:2px}
+.dash-stat-card-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.dash-stat-card-value{font-family:var(--font-display);font-size:22px;font-weight:800;color:var(--txt);line-height:1}
+.dash-stat-card-sub{font-size:11px;color:var(--txt3);padding-left:50px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dash-stat-card-sub.up{color:var(--green)}
+
 /* ─── BUTTONS ─── */
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:0 16px;height:36px;border-radius:var(--r-md);font-size:13px;font-weight:600;border:1.5px solid transparent;transition:all var(--dur) var(--ease);white-space:nowrap;cursor:pointer;font-family:inherit;line-height:1}
 .btn:disabled{opacity:.5;cursor:not-allowed;pointer-events:none}
@@ -256,6 +267,34 @@ button{cursor:pointer;font-family:inherit}input,select,textarea{font-family:inhe
 .alloc-bar-target{position:absolute;top:0;bottom:0;width:2px;background:var(--txt);z-index:1}
 .alloc-bar-value{font-size:12px;font-weight:600;color:var(--txt3);width:80px;text-align:right;flex-shrink:0}
 
+/* ─── MINI STATS STRIP (compact stat bar for sub-pages) ─── */
+.mini-stats-strip{display:flex;gap:0;margin-bottom:20px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden;box-shadow:var(--shadow-xs)}
+.mini-stat{flex:1;padding:14px 16px;text-align:center;border-right:1px solid var(--border)}
+.mini-stat:last-child{border-right:none}
+.mini-stat-value{display:block;font-family:var(--font-display);font-size:24px;font-weight:800;line-height:1}
+.mini-stat-label{display:block;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--txt3);margin-top:4px}
+
+/* ─── DOC CATEGORY MOBILE PILLS ─── */
+.doc-cats-mobile{display:none}
+.doc-cat-pill{display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border:1.5px solid var(--border);border-radius:var(--r-full);background:var(--surface);color:var(--txt2);font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;font-family:inherit;transition:all var(--dur)}
+.doc-cat-pill.active{background:var(--brand);color:#fff;border-color:var(--brand)}
+.doc-cat-pill-count{font-size:10px;font-weight:700;background:rgba(0,0,0,.08);padding:1px 5px;border-radius:var(--r-full)}
+.doc-cat-pill.active .doc-cat-pill-count{background:rgba(255,255,255,.25)}
+
+/* ─── INSIGHTS GRID ─── */
+.insights-grid{display:flex;flex-direction:column;gap:10px}
+.insight-card-inner{padding:14px 16px}
+.insight-icon-sm{width:28px;height:28px;border-radius:var(--r-sm);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+.insight-card-title{font-size:14px;font-weight:600;color:var(--txt);margin-bottom:4px;line-height:1.3}
+.insight-card-body{font-size:12.5px;color:var(--txt2);line-height:1.5}
+
+/* ─── DASHBOARD RESPONSIVE ─── */
+.dash-greeting{margin-bottom:24px}
+.dash-greeting-title{font-family:var(--font-display);font-size:28px;font-weight:800;color:var(--txt)}
+.dash-greeting-sub{font-size:14px;color:var(--txt3);margin-top:4px}
+.dash-stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
+.dash-chart-wrap{padding:0 20px 20px;height:240px}
+
 /* ─── ANIMATIONS ─── */
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
 @keyframes slideUp{from{transform:translateY(10px);opacity:0}to{transform:translateY(0);opacity:1}}
@@ -276,15 +315,79 @@ button{cursor:pointer;font-family:inherit}input,select,textarea{font-family:inhe
   .navbar-bell-dropdown.navbar-bell-dropdown{width:calc(100vw - 24px);right:12px}
   .navbar-mobile-btn{display:flex}
   .navbar-user-name{display:none}
-  .page-scroll{padding:16px}
-  .page-header h1{font-size:20px}
+  .page-scroll{padding:12px 12px}
+  .page-header{margin-bottom:14px;gap:8px}
+  .page-header h1{font-size:18px}
+  .page-header p{font-size:11px;margin-top:2px}
+  .page-header-actions .btn{height:32px;font-size:11px;padding:0 10px}
+
+  /* Mini stats strip compact */
+  .mini-stat{padding:10px 8px}
+  .mini-stat-value{font-size:18px}
+  .mini-stat-label{font-size:8px;margin-top:2px}
+  .mini-stats-strip{margin-bottom:14px}
+
+  /* Doc category mobile pills */
+  .doc-cats-mobile{display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;margin-bottom:12px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  .doc-cats-mobile::-webkit-scrollbar{display:none}
+  .docs-sidebar-desktop{display:none}
+
+  /* 1. Family page: compact horizontal member cards */
+  .member-card{padding:0;text-align:left;display:grid;grid-template-columns:48px 1fr auto;grid-template-rows:auto auto;gap:0;align-items:center}
+  .member-card .avatar{width:36px !important;height:36px !important;font-size:12px !important;margin:10px;grid-row:1/3}
+  .member-card-name{font-size:13px;font-weight:600;margin-top:0;padding-top:8px;padding-right:10px}
+  .member-card-sub{font-size:11px;padding-bottom:8px;padding-right:10px}
+  .member-card-stats{display:flex;gap:12px;margin:0;padding:6px 10px;border-top:1px solid var(--border);grid-column:1/-1;border-radius:0}
+  .member-stat{text-align:left;display:flex;align-items:center;gap:4px}
+  .member-stat-val{font-size:12px}
+  .member-stat-lbl{font-size:9px}
+  .member-card > div:last-child{margin:0 !important;padding:6px 10px !important;grid-column:1/-1;border-top:1px solid var(--border);gap:6px !important;justify-content:flex-end}
+  .member-card > div:last-child .btn{height:24px;font-size:10px;padding:0 10px;border-radius:var(--r-xs);flex:0 0 auto !important}
+
+  /* 2. Portfolio banner: show all 3 boxes inline on first view */
+  .nw-banner{padding:12px;gap:8px;flex-direction:row;flex-wrap:wrap}
+  .nw-stat-box{padding:10px 12px;flex:1;min-width:0}
+  .nw-stat-box-value{font-size:16px}
+  .nw-stat-box-label{font-size:9px;gap:4px}
+  .nw-stat-box-label svg{width:11px;height:11px}
+  .nw-stat-box-change{font-size:9px}
+  .nw-stat-box-change svg{width:10px;height:10px}
+  .nw-arrow{display:none}
+
+  /* 3. Insights: 2-column grid */
+  .insights-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .insight-card-inner{padding:10px 12px}
+  .insight-icon-sm{width:24px;height:24px;font-size:11px}
+  .insight-card-title{font-size:12px;margin-bottom:2px}
+  .insight-card-body{font-size:10px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .insight-card .btn{display:none}
+
+  /* 4. Audit: tighten spacing */
+  .audit-ring-wrap{gap:16px}
+  .audit-ring-wrap svg{width:90px;height:90px}
+  .audit-ring-wrap h2{font-size:16px;margin-bottom:4px}
+  .audit-ring-wrap p{font-size:11px;margin-bottom:10px}
+  .sec-bar{padding:7px 14px;font-size:9px}
   .page-header-actions{flex-wrap:wrap}
   .form-grid-2,.form-grid-3{grid-template-columns:1fr}
   .audit-ring-wrap{flex-direction:column;align-items:stretch}
-  .nw-banner{flex-direction:column;gap:12px}
-  .nw-arrow{transform:rotate(90deg);padding:4px 0}
-  .stat-card{padding:16px}
-  .stat-card-value{font-size:24px}
+  .nw-banner{flex-direction:column;gap:0;padding:0;border-radius:var(--r-lg);overflow:hidden}
+  .nw-arrow{display:none}
+  .nw-stat-box{border-radius:0;padding:14px 16px}
+  /* Dashboard compact */
+  .dash-greeting{margin-bottom:14px}
+  .dash-greeting-title{font-size:22px}
+  .dash-greeting-sub{font-size:12px}
+  .dash-stats-grid{grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+  .dash-stat-card{padding:10px 12px;gap:4px}
+  .dash-stat-card-top{gap:8px}
+  .dash-stat-card-icon{width:32px;height:32px}
+  .dash-stat-card-icon svg{width:15px;height:15px}
+  .dash-stat-card-label{font-size:9px}
+  .dash-stat-card-value{font-size:18px}
+  .dash-stat-card-sub{font-size:10px;padding-left:40px}
+  .dash-stat-card .badge{font-size:9px;padding:1px 6px}
+  .dash-stat-card-sub{display:none}
   .data-table{font-size:12px}
   .data-table th,.data-table td{padding:8px 12px}
   .doc-categories + div,.card .data-table{overflow-x:auto}
@@ -341,14 +444,19 @@ button{cursor:pointer;font-family:inherit}input,select,textarea{font-family:inhe
 .doc-mobile-card{padding:14px 16px;border-bottom:1px solid var(--border)}
 .doc-mobile-card:last-child{border-bottom:none}
 
-/* Fix grid layouts on tablet/mobile */
+/* Tablet (iPad) */
 @media(max-width:900px){
   .docs-layout{grid-template-columns:1fr !important}
   .dash-grid-2{grid-template-columns:1fr !important}
+  .dash-stats-grid{grid-template-columns:repeat(2,1fr);gap:12px}
+  .dash-greeting{margin-bottom:18px}
+  .dash-greeting-title{font-size:24px}
 }
 @media(max-width:768px){
   .doc-table-desktop{display:none}
   .doc-cards-mobile{display:block}
+  .dash-grid-2{gap:12px !important;margin-bottom:12px !important}
+  .dash-chart-wrap{height:180px;padding:0 12px 14px}
   .settings-layout{display:flex;flex-direction:column;gap:16px}
   .settings-sidebar{display:none}
   .settings-tabs-mobile{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
