@@ -296,10 +296,12 @@ button{cursor:pointer;font-family:inherit}input,select,textarea{font-family:inhe
 .dash-stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-bottom:24px}
 .dash-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
 .dash-grid-2 > .card{min-width:0;overflow:hidden}
+.dash-stats-grid,.dash-grid-2,.ai-alerts-grid,.dash-chart-wrap{max-width:100%;min-width:0}
+.dash-stats-grid > *,.dash-grid-2 > *,.ai-alerts-grid > *{min-width:0;max-width:100%}
 .ai-alerts-grid{padding:0 16px 16px;display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .dash-alerts-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
 .dash-chart-wrap{position:relative;width:100%;padding:0 20px 20px;height:240px}
-.dash-chart-wrap canvas{max-width:100% !important;}
+.dash-chart-wrap canvas{display:block;max-width:100% !important;width:100% !important}
 
 /* ─── ANIMATIONS ─── */
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
@@ -404,7 +406,7 @@ button{cursor:pointer;font-family:inherit}input,select,textarea{font-family:inhe
   .dash-greeting{margin-bottom:14px}
   .dash-greeting-title{font-size:22px}
   .dash-greeting-sub{font-size:12px}
-  .dash-stats-grid{grid-template-columns:1fr;gap:10px;margin-bottom:16px}
+  .dash-stats-grid{grid-template-columns:1fr;gap:10px;margin-bottom:16px;max-width:100%}
   .dash-stat-card{padding:10px 12px;gap:4px}
   .dash-stat-card-top{gap:8px}
   .dash-stat-card-icon{width:32px;height:32px}
