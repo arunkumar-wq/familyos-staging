@@ -351,8 +351,18 @@ router.delete('/:id', auth, (req, res) => {
       return res.status(403).json({ error: 'Permission denied' });
     }
 
+    const doc = db.prepare("SELECT ai_summary, owner_id FROM documents WHERE id=? AND family_id=?").get(req.params.id, req.user.family_id);
+    let aiType = '';
+    try { aiType = JSON.parse(doc.ai_summary)?.type || ''; } catch {}
+    const owner = db.prepare("SELECT first_name, last_name FROM users WHERE id=?").get(doc.owner_id);
+    const ownerName = owner ? owner.first_name + ' ' + owner.last_name : '';
+
     db.prepare(`UPDATE documents SET is_deleted=1, updated_at=datetime('now') WHERE id=? AND family_id=?`).run(req.params.id, req.user.family_id);
-    db.prepare("UPDATE alerts SET is_dismissed=1 WHERE family_id=? AND description LIKE ?").run(req.user.family_id, '%' + existing.name + '%');
+    if (aiType && ownerName) {
+      db.prepare("UPDATE alerts SET is_dismissed=1 WHERE family_id=? AND title LIKE ? AND title LIKE ?").run(req.user.family_id, '%' + aiType + '%', '%' + ownerName + '%');
+    } else {
+      db.prepare("UPDATE alerts SET is_dismissed=1 WHERE family_id=? AND description LIKE ?").run(req.user.family_id, '%' + existing.name + '%');
+    }
 
     // Audit log
     db.prepare(`INSERT INTO audit_log (id, family_id, user_id, action, entity_type, entity_id, meta) VALUES (?, ?, ?, ?, ?, ?, ?)`).run(
