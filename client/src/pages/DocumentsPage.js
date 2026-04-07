@@ -110,31 +110,19 @@ export default function DocumentsPage({ navigate }) {
 
   const downloadDoc = async (d) => {
     try {
-      const token = localStorage.getItem('fos_token');
-      const resp = await fetch('/api/documents/' + d.id + '/download', {
-        headers: { Authorization: 'Bearer ' + token }
-      });
-      if (!resp.ok) throw new Error('Download failed');
-      const blob = await resp.blob();
-      const filename = resp.headers.get('Content-Disposition')?.match(/filename="?([^"]+)"?/)?.[1] || d.name + '.txt';
-
-      // iOS Safari: window.open with blob URL works when user-initiated
+      const resp = await api.get('/documents/' + d.id + '/download', { responseType: 'blob' });
+      const blob = resp.data;
+      const filename = d.original_name || d.name || 'document';
       const url = URL.createObjectURL(blob);
-      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-      if (isIOS) {
-        // On iOS, open blob in new tab (Safari will show save/share prompt)
-        window.open(url, '_blank');
-      } else {
-        // Desktop + Android: use anchor with download attribute
-        const a = document.createElement('a');
-        a.href = url; a.download = decodeURIComponent(filename);
-        a.style.display = 'none';
-        document.body.appendChild(a); a.click();
-        setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 2000);
-      }
-    } catch {
-      // Final fallback: open document detail modal
-      setViewingDoc(d);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 2000);
+    } catch(err) {
+      console.error('Download error:', err);
+      alert('Download failed: ' + (err.response?.data?.error || err.message));
     }
   };
 
