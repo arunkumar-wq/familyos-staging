@@ -67,6 +67,7 @@ export default function DashboardPage({ navigate }) {
         }
       },
     });
+    setTimeout(() => lineChart.current?.resize(), 100);
     return () => { if (lineChart.current) lineChart.current.destroy(); };
   }, [summary]);
 
