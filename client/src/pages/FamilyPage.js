@@ -35,7 +35,7 @@ export default function FamilyPage({ navigate }) {
       {loading ? (
         <div style={{ padding:48, textAlign:'center', color:'var(--txt3)' }}>Loading members...</div>
       ) : (
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(210px,1fr))', gap:14 }}>
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(280px,1fr))', gap:14 }}>
           {members.map(m => (
             <div key={m.id} className="card member-card" onClick={() => navigate('edit-member',m)} role="button" tabIndex={0} onKeyDown={e => { if (e.key === 'Enter') navigate('edit-member',m); }} aria-label={`Edit ${m.first_name} ${m.last_name}`}>
               <Avatar firstName={m.first_name} lastName={m.last_name} color={m.avatar_color||'var(--accent)'} size={60} />

@@ -12,6 +12,7 @@ const PORT = process.env.PORT || 5000;
 // ─── UPLOADS DIRECTORY ───────────────────────────────────────────────
 const uploadsDir = path.join(__dirname, '..', 'uploads');
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+if (!fs.existsSync('uploads')) fs.mkdirSync('uploads', { recursive: true });
 
 // ─── MIDDLEWARE ──────────────────────────────────────────────────────
 app.use(cors({
@@ -33,12 +34,8 @@ app.use((req, res, next) => {
   next();
 });
 
-// Serve uploaded files through authenticated route
-app.use('/uploads', auth, (req, res, next) => {
-  // Only serve files belonging to user's family
-  res.setHeader('Content-Disposition', 'attachment');
-  express.static(uploadsDir)(req, res, next);
-});
+// Serve uploaded files (must be before API routes)
+app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 
 // Rate limiting
 const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 200, message: { error: 'Too many requests' } });

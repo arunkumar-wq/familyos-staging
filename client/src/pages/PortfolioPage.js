@@ -97,7 +97,7 @@ export default function PortfolioPage() {
       </div>
 
       {/* Chart + Accounts */}
-      <div className="dash-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+      <div className="dash-grid-2" style={{ marginBottom: 16 }}>
         <div className="card">
           <div style={{ padding: '18px 20px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div className="section-label">Net Worth Trend (24 Months)</div>
@@ -141,7 +141,7 @@ export default function PortfolioPage() {
       </div>
 
       {/* AI Insights + Allocation */}
-      <div className="dash-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+      <div className="dash-grid-2">
         <div className="card">
           <div style={{ padding: '18px 20px 14px' }}><div className="section-label">AI Portfolio Insights</div></div>
           <div style={{ padding: '0 20px 20px' }}>

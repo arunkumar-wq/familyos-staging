@@ -15,7 +15,13 @@
       "Bash(node -c server/routes/documents.js)",
       "Bash(node -c server/routes/portfolio.js)",
       "Bash(node -c server/routes/tasks.js)",
-      "Bash(node -c server/routes/dashboard.js)"
+      "Bash(node -c server/routes/dashboard.js)",
+      "Bash(npm install:*)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(curl -s http://localhost:3000)",
+      "Bash(curl -s http://localhost:5000/api/health)",
+      "Bash(netstat -ano)",
+      "Bash(taskkill //F //IM node.exe)"
     ]
   }
 }

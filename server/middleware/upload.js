@@ -22,6 +22,7 @@ const ALLOWED_TYPES = {
   '.webp': ['image/webp'],
   '.docx': ['application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
   '.doc': ['application/msword'],
+  '.txt': ['text/plain'],
 };
 
 const fileFilter = (req, file, cb) => {
@@ -43,7 +44,7 @@ const fileFilter = (req, file, cb) => {
 const upload = multer({
   storage,
   fileFilter,
-  limits: { fileSize: 50 * 1024 * 1024 } // 50MB
+  limits: { fileSize: 10 * 1024 * 1024 } // 10MB
 });
 
 module.exports = upload;

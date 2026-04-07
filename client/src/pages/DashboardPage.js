@@ -79,7 +79,7 @@ export default function DashboardPage({ navigate }) {
     donutChart.current = new Chart(donutRef.current.getContext('2d'), {
       type: 'doughnut',
       data: { labels: alloc.map(a => a.category.replace('-',' ')), datasets: [{ data: alloc.map(a => +a.percentage), backgroundColor: colors.slice(0, alloc.length), borderWidth: 0 }] },
-      options: { responsive: true, cutout: '68%', plugins: { legend: { display: false } } },
+      options: { responsive: true, maintainAspectRatio: false, cutout: '68%', plugins: { legend: { display: false } } },
     });
     return () => { if (donutChart.current) donutChart.current.destroy(); };
   }, [portfolio]);
@@ -132,7 +132,7 @@ export default function DashboardPage({ navigate }) {
       </div>
 
       {/* Charts + Alerts Row */}
-      <div className="dash-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+      <div className="dash-grid-2">
         {/* Portfolio Performance */}
         <div className="card">
           <div style={{ padding: '18px 20px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -149,7 +149,7 @@ export default function DashboardPage({ navigate }) {
           <div style={{ padding: '18px 20px 14px' }}>
             <div className="section-label">AI-Generated Tasks &amp; Alerts</div>
           </div>
-          <div style={{ padding: '0 16px 16px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <div className="ai-alerts-grid">
             {alerts.slice(0, 4).map((a) => {
               const sev = SEV_STYLES[a.severity] || SEV_STYLES.info;
               return (
@@ -176,7 +176,7 @@ export default function DashboardPage({ navigate }) {
       </div>
 
       {/* Allocation + Family Row */}
-      <div className="dash-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+      <div className="dash-grid-2">
         {/* Asset Allocation */}
         <div className="card">
           <div style={{ padding: '18px 20px 14px' }}><div className="section-label">Asset Allocation</div></div>

@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import api from '../utils/api';
-import { catIcon, catColor, fmtDate } from '../utils/formatters';
+import { catIcon, fmtDate } from '../utils/formatters';
 import { PageHeader, Modal, Badge, EmptyState } from '../components/UI';
+import { useAuth } from '../context/AuthContext';
 
 const CATS = [
   { id: 'all', label: 'All Documents', icon: '📁' },
@@ -30,6 +31,7 @@ function guessCat(name) {
 }
 
 export default function DocumentsPage({ navigate }) {
+  const { user } = useAuth();
   const [docs, setDocs] = useState([]);
   const [stats, setStats] = useState({});
   const [cat, setCat] = useState('all');
@@ -37,9 +39,7 @@ export default function DocumentsPage({ navigate }) {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [showUpload, setShowUpload] = useState(false);
-  const [dragging, setDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [aiResult, setAiResult] = useState(null);
   const [uploadForm, setUploadForm] = useState({ name: '', category: 'other', notes: '' });
   const [members, setMembers] = useState([]);
   const [selectedMember, setSelectedMember] = useState('');
@@ -49,6 +49,9 @@ export default function DocumentsPage({ navigate }) {
   const [statusFilter, setStatusFilter] = useState('all');
   const [scanning, setScanning] = useState(false);
   const [viewingDoc, setViewingDoc] = useState(null);
+  const [toast, setToast] = useState('');
+  const [uploadStep, setUploadStep] = useState(1);
+  const [uploadedDoc, setUploadedDoc] = useState(null);
   const fileInputRef = useRef();
 
   useEffect(() => { const t = setTimeout(() => setDebouncedSearch(search), 350); return () => clearTimeout(t); }, [search]);
@@ -71,24 +74,29 @@ export default function DocumentsPage({ navigate }) {
     if (!file) return;
     setPendingFile(file);
     setUploadForm(f => ({ ...f, name: file.name.replace(/\.[^.]+$/, ''), category: guessCat(file.name) }));
-    setUploading(true); setAiResult(null);
-    setTimeout(() => {
-      setAiResult({ type: 'Document', confidence: 0.92, fields: ['Document detected', 'Category: ' + guessCat(file.name)] });
-      setUploading(false);
-    }, 1500);
+    setUploadStep(2);
+    setShowUpload(true);
   };
 
   const submitUpload = async () => {
-    if (!pendingFile) return;
+    if (!pendingFile || !selectedMember || !uploadForm.category) return;
+    setUploading(true);
     setUploadError('');
     const fd = new FormData();
     fd.append('file', pendingFile); fd.append('name', uploadForm.name);
     fd.append('category', uploadForm.category); fd.append('notes', uploadForm.notes);
     fd.append('ownerId', selectedMember);
     try {
-      await api.post('/documents/upload', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
-      setShowUpload(false); setPendingFile(null); setAiResult(null); loadDocs();
+      const resp = await api.post('/documents/upload', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+      const ai = resp.data?.aiSummary || resp.data?.ai_summary;
+      const fieldCount = ai && ai.extractedFields ? Object.keys(ai.extractedFields).length : 0;
+      setToast(fieldCount ? `Document uploaded! AI extracted ${fieldCount} fields.` : 'Document uploaded!');
+      setTimeout(() => setToast(''), 4000);
+      setUploadedDoc(resp.data);
+      setUploadStep(4);
+      loadDocs();
     } catch (e) { setUploadError(e.response?.data?.error || 'Upload failed'); }
+    finally { setUploading(false); }
   };
 
   const runAiScan = () => {
@@ -97,11 +105,7 @@ export default function DocumentsPage({ navigate }) {
   };
 
   const viewDoc = (d) => {
-    if (d.file_path) {
-      window.open('/uploads/' + d.file_path, '_blank');
-    } else {
-      setViewingDoc(d);
-    }
+    setViewingDoc(d);
   };
 
   const downloadDoc = async (d) => {
@@ -139,6 +143,33 @@ export default function DocumentsPage({ navigate }) {
     await api.delete('/documents/' + id).catch(() => {}); loadDocs();
   };
 
+  const openUploadFlow = () => {
+    setUploadError('');
+    setUploadedDoc(null);
+    setUploadStep(1);
+    setShowUpload(true);
+    if (fileInputRef.current) fileInputRef.current.click();
+  };
+
+  const closeUploadFlow = () => {
+    setShowUpload(false);
+    setPendingFile(null);
+    setUploadedDoc(null);
+    setUploadError('');
+    setUploadStep(1);
+  };
+
+  const parseAi = (d) => {
+    try { return d.ai_summary ? JSON.parse(d.ai_summary) : null; } catch { return null; }
+  };
+
+  const extractedEntries = (ai) => {
+    if (!ai) return [];
+    const src = ai.extractedFields || ai.fields || {};
+    if (Array.isArray(src)) return src.map((v, i) => [`Field ${i + 1}`, String(v)]);
+    return Object.entries(src).filter(([, v]) => v !== null && v !== undefined && String(v).trim() !== '');
+  };
+
   // Group docs by member
   const grouped = {};
   docs.forEach(d => {
@@ -162,10 +193,15 @@ export default function DocumentsPage({ navigate }) {
 
   return (
     <div className="page-inner">
+      {toast && (
+        <div className="card" style={{ marginBottom: 12, padding: '10px 14px', background: 'var(--green-bg)', border: '1px solid var(--green-border)' }}>
+          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--green)' }}>{toast}</span>
+        </div>
+      )}
       <PageHeader title="Family Documents" sub={`${stats.total || 0} documents · 12 categories · Last AI scan 2 hours ago`}>
         <button className="btn btn-outline" style={{gap:6}} onClick={() => setShowFilter(!showFilter)}>&#9776; Filter</button>
         <button className="btn btn-teal" style={{gap:6}} onClick={runAiScan} disabled={scanning}>{scanning ? 'Scanning...' : '\u2728 AI Scan'}</button>
-        <button className="btn btn-brand" onClick={() => { setShowUpload(true); setAiResult(null); setPendingFile(null); setUploading(false); setUploadError(''); }} style={{gap:6}}>+ Upload</button>
+        <button className="btn btn-brand" onClick={openUploadFlow} style={{gap:6}}>+ Upload</button>
       </PageHeader>
 
       {/* Search */}
@@ -221,14 +257,15 @@ export default function DocumentsPage({ navigate }) {
             <>
             {/* Desktop Table */}
             <div className="doc-table-desktop">
+            <div className="table-scroll">
             <table className="data-table">
               <thead>
-                <tr><th>Document</th><th>Status</th><th>Expiry</th><th>AI Score</th><th style={{textAlign:'right'}}>Actions</th></tr>
+                <tr><th>Document</th><th>Status</th><th>Expiry</th><th>AI</th><th>Uploaded</th><th style={{textAlign:'right'}}>Actions</th></tr>
               </thead>
               <tbody>
                 {Object.entries(grouped).map(([name, group]) => (
                   <React.Fragment key={name}>
-                    <tr><td colSpan={5} style={{ padding: 0 }}>
+                    <tr><td colSpan={6} style={{ padding: 0 }}>
                       <div className="doc-member-row">
                         <div className="avatar" style={{ width: 24, height: 24, background: group.color, fontSize: 9 }}>
                           {name.split(' ').map(w => w[0]).join('').slice(0, 2)}
@@ -237,7 +274,7 @@ export default function DocumentsPage({ navigate }) {
                       </div>
                     </td></tr>
                     {group.docs.map(d => {
-                      let ai = null; try { ai = d.ai_summary ? JSON.parse(d.ai_summary) : null; } catch {}
+                      const ai = parseAi(d);
                       return (
                         <tr key={d.id}>
                           <td>
@@ -245,22 +282,24 @@ export default function DocumentsPage({ navigate }) {
                               <div style={{ width: 32, height: 32, borderRadius: 'var(--r-md)', background: 'var(--surface2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, flexShrink: 0 }}>{catIcon(d.category)}</div>
                               <div>
                                 <div style={{ fontWeight: 600, color: 'var(--txt)', fontSize: 13 }}>{d.name}</div>
-                                {ai?.type && ai.type !== 'Document' && <div style={{ fontSize: 11, color: 'var(--txt4)' }}>{ai.type}</div>}
+                                {ai?.type && <div style={{ fontSize: 11, color: 'var(--txt4)', marginTop: 2 }}>{ai.type}</div>}
                               </div>
                             </div>
                           </td>
                           <td><Badge color={statusColor(d.status)}>{statusLabel(d.status)}</Badge></td>
                           <td style={{ fontSize: 13, color: 'var(--txt3)' }}>{d.expiry_date ? fmtDate(d.expiry_date) : 'N/A'}</td>
                           <td>
-                            {d.ai_analyzed ? (
+                            {d.ai_analyzed && ai?.confidence ? (
                               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                <span style={{ fontSize: 13, fontWeight: 600 }}>{ai?.confidence ? Math.round(ai.confidence * 100) + '%' : '—'}</span>
-                                <span style={{ fontSize: 10, color: 'var(--txt4)' }}>AI score</span>
+                                <span style={{ fontSize: 13, fontWeight: 600 }}>{Math.round(ai.confidence * 100)}%</span>
                                 <div className="progress-track" style={{ width: 50 }}>
-                                  <div className="progress-fill" style={{ width: (ai?.confidence ? ai.confidence * 100 : 0) + '%', background: 'var(--accent)' }} />
+                                  <div className="progress-fill" style={{ width: (ai.confidence * 100) + '%', background: 'var(--accent)' }} />
                                 </div>
                               </div>
                             ) : '—'}
+                          </td>
+                          <td>
+                            {d.created_at ? fmtDate(d.created_at) : '—'}
                           </td>
                           <td>
                             <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
@@ -276,6 +315,7 @@ export default function DocumentsPage({ navigate }) {
               </tbody>
             </table>
             </div>
+            </div>
 
             {/* Mobile Card List */}
             <div className="doc-cards-mobile">
@@ -286,19 +326,20 @@ export default function DocumentsPage({ navigate }) {
                     {name}
                   </div>
                   {group.docs.map(d => {
-                    let ai = null; try { ai = d.ai_summary ? JSON.parse(d.ai_summary) : null; } catch {}
+                    const ai = parseAi(d);
                     return (
                       <div key={d.id} className="doc-mobile-card">
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
                           <div style={{ width: 36, height: 36, borderRadius: 'var(--r-md)', background: 'var(--surface2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>{catIcon(d.category)}</div>
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ fontWeight: 600, color: 'var(--txt)', fontSize: 13, lineHeight: 1.3 }}>{d.name}</div>
-                            {ai?.type && ai.type !== 'Document' && <div style={{ fontSize: 11, color: 'var(--txt4)' }}>{ai.type}</div>}
+                            {ai?.type && <div style={{ fontSize: 11, color: 'var(--txt4)', marginTop: 2 }}>{ai.type}</div>}
                           </div>
                           <Badge color={statusColor(d.status)}>{statusLabel(d.status)}</Badge>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 12, color: 'var(--txt3)', marginBottom: 10 }}>
                           <span>Expiry: {d.expiry_date ? fmtDate(d.expiry_date) : 'N/A'}</span>
+                          {d.created_at && <span> · Uploaded: {fmtDate(d.created_at)}</span>}
                           {d.ai_analyzed && ai?.confidence && (
                             <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                               <span style={{ fontWeight: 600, color: 'var(--txt)' }}>{Math.round(ai.confidence * 100)}%</span>
@@ -322,56 +363,81 @@ export default function DocumentsPage({ navigate }) {
         </div>
       </div>
 
+      <input ref={fileInputRef} type="file" style={{ display: 'none' }} accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.txt" onChange={e => { handleFile(e.target.files[0]); e.target.value = ''; }} />
       {showUpload && (
-        <Modal title="Upload Document" onClose={() => { setShowUpload(false); setPendingFile(null); setAiResult(null); setUploadError(''); }} maxWidth={580}
-          footer={pendingFile && !uploading ? (
-            <><button className="btn btn-outline" onClick={() => { setShowUpload(false); setPendingFile(null); }}>Cancel</button><button className="btn btn-teal" onClick={submitUpload}>Save to Vault</button></>
-          ) : undefined}
+        <Modal title="Upload Document" onClose={closeUploadFlow} maxWidth={500}
+          footer={(
+            <>
+              {uploadStep > 1 && uploadStep < 4 && <button className="btn btn-outline" onClick={() => setUploadStep(s => s - 1)}>Back</button>}
+              {uploadStep < 3 && <button className="btn btn-outline" onClick={closeUploadFlow}>Cancel</button>}
+              {uploadStep === 2 && <button className="btn btn-teal" onClick={() => setUploadStep(3)} disabled={!selectedMember}>Next</button>}
+              {uploadStep === 3 && <button className="btn btn-teal" onClick={submitUpload} disabled={uploading}>{uploading ? 'Uploading...' : 'Upload'}</button>}
+              {uploadStep === 4 && <button className="btn btn-teal" onClick={closeUploadFlow}>Done</button>}
+            </>
+          )}
         >
+          <div style={{ fontSize: 12, color: 'var(--txt3)', marginBottom: 12, fontWeight: 600 }}>Step {uploadStep} of 4</div>
           {uploadError && <div role="alert" style={{ background: 'var(--red-bg)', border: '1px solid var(--red-border)', borderRadius: 8, padding: '10px 14px', marginBottom: 12, color: 'var(--red)', fontSize: 13 }}>{uploadError}</div>}
-          {!pendingFile && !uploading && (
-            <div className={dragging ? 'dropzone active' : 'dropzone'}
-              onDrop={e => { e.preventDefault(); setDragging(false); handleFile(e.dataTransfer.files[0]); }}
-              onDragOver={e => { e.preventDefault(); setDragging(true); }} onDragLeave={() => setDragging(false)}
-              onClick={() => fileInputRef.current.click()} role="button" tabIndex={0}
-              onKeyDown={e => { if (e.key === 'Enter') fileInputRef.current.click(); }}>
+
+          {uploadStep === 1 && (
+            <div className="dropzone" onClick={() => fileInputRef.current && fileInputRef.current.click()} role="button" tabIndex={0}>
               <div className="dropzone-icon">&#8679;</div>
-              <div className="dropzone-title">Drop files here or click to browse</div>
-              <div className="dropzone-sub">PDF, JPG, PNG, DOCX — up to 50 MB</div>
-              <input ref={fileInputRef} type="file" style={{ display: 'none' }} accept=".pdf,.jpg,.jpeg,.png,.webp,.docx,.doc" onChange={e => { handleFile(e.target.files[0]); e.target.value = ''; }} />
+              <div className="dropzone-title">{pendingFile ? pendingFile.name : 'Select a file'}</div>
+              <div className="dropzone-sub">PDF, JPG, PNG, DOC, DOCX, TXT</div>
             </div>
           )}
-          {uploading && (
-            <div style={{ textAlign: 'center', padding: '40px 0' }}>
-              <div className="spinner" style={{ margin: '0 auto 16px' }} />
-              <p style={{ fontSize: 16, fontWeight: 600 }}>AI is reading your document...</p>
-            </div>
-          )}
-          {aiResult && pendingFile && (
+
+          {uploadStep === 2 && (
             <div>
-              <div className="ai-result-box">
-                <div className="ai-result-title">AI Analysis Complete — {Math.round(aiResult.confidence * 100)}% confidence</div>
-                {aiResult.fields.map((f, i) => <div key={i} className="ai-field">{f}</div>)}
-              </div>
-              <div className="form-grid-2">
-                <div className="form-group"><label className="form-label">Document Name</label><input className="form-input" value={uploadForm.name} onChange={e => setUploadForm(f => ({ ...f, name: e.target.value }))} /></div>
-                <div className="form-group"><label className="form-label">Category</label>
-                  <select className="form-select" value={uploadForm.category} onChange={e => setUploadForm(f => ({ ...f, category: e.target.value }))}>
-                    {CATS.filter(c => c.id !== 'all').map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
-                  </select>
-                </div>
-                <div className="form-group"><label className="form-label">Belongs To</label>
-                  <select className="form-select" value={selectedMember} onChange={e => setSelectedMember(e.target.value)}>
-                    {members.map(m => <option key={m.id} value={m.id}>{m.first_name} {m.last_name}</option>)}
-                  </select>
-                </div>
+              <div className="section-label" style={{ marginBottom: 10 }}>Select Family Member</div>
+              <div style={{ display: 'grid', gap: 8 }}>
+                {members.map(m => (
+                  <button key={m.id} className={`btn ${selectedMember === m.id ? 'btn-teal' : 'btn-outline'}`} style={{ justifyContent: 'flex-start' }} onClick={() => setSelectedMember(m.id)}>
+                    <span className="avatar" style={{ width: 24, height: 24, background: m.avatar_color || '#1a3a5c', fontSize: 9 }}>{((m.first_name || '')[0] || '') + ((m.last_name || '')[0] || '')}</span>
+                    {m.first_name} {m.last_name}
+                  </button>
+                ))}
               </div>
             </div>
           )}
+
+          {uploadStep === 3 && (
+            <div>
+              <div className="section-label" style={{ marginBottom: 10 }}>Select Category</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                {CATS.filter(c => c.id !== 'all' && c.id !== 'certificates').map(c => (
+                  <button key={c.id} className={`btn ${uploadForm.category === c.id ? 'btn-teal' : 'btn-outline'}`} onClick={() => setUploadForm(f => ({ ...f, category: c.id }))}>
+                    <span>{c.icon}</span> {c.label.split(' ')[0]}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {uploadStep === 4 && uploadedDoc && (() => {
+            const ai = uploadedDoc.aiSummary || parseAi(uploadedDoc) || {};
+            const pairs = extractedEntries(ai);
+            const selected = members.find(m => m.id === selectedMember);
+            return (
+              <div>
+                <div style={{ color: 'var(--green)', fontWeight: 700, fontSize: 16, marginBottom: 10 }}>Document Uploaded Successfully!</div>
+                <div className="ai-result-box">
+                  <div className="ai-field"><strong>📄 Document:</strong> {pendingFile?.name || uploadedDoc.name}</div>
+                  <div className="ai-field"><strong>👤 Uploaded by:</strong> {user?.first_name} {user?.last_name}</div>
+                  <div className="ai-field"><strong>👥 For:</strong> {selected ? `${selected.first_name} ${selected.last_name}` : 'Unknown'}</div>
+                  <div className="ai-field"><strong>📁 Category:</strong> {uploadForm.category}</div>
+                  <div className="ai-field"><strong>📅 Uploaded:</strong> {fmtDate(new Date())}</div>
+                  <div className="ai-field"><strong>🤖 Document Type:</strong> {ai.type || 'Document'}</div>
+                  <div className="ai-field"><strong>Confidence:</strong> {ai.confidence ? `${Math.round(ai.confidence * 100)}%` : '—'}</div>
+                  {pairs.map(([k, v]) => <div key={k} className="ai-field"><strong>{k}:</strong> {String(v)}</div>)}
+                </div>
+              </div>
+            );
+          })()}
         </Modal>
       )}
       {viewingDoc && (() => {
-        let ai = null; try { ai = viewingDoc.ai_summary ? JSON.parse(viewingDoc.ai_summary) : null; } catch {}
+        const ai = parseAi(viewingDoc);
         return (
           <Modal title="Document Details" onClose={() => setViewingDoc(null)} maxWidth={500}
             footer={<><button className="btn btn-outline" onClick={() => { downloadDoc(viewingDoc); }}>Download</button><button className="btn btn-teal" onClick={() => setViewingDoc(null)}>Close</button></>}>
@@ -383,17 +449,24 @@ export default function DocumentsPage({ navigate }) {
               </div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
-              {[['Category', viewingDoc.category], ['Status', viewingDoc.status], ['Expiry', viewingDoc.expiry_date ? fmtDate(viewingDoc.expiry_date) : 'N/A'], ['Size', viewingDoc.file_size || 'N/A']].map(([k, v]) => (
+              {[['Category', viewingDoc.category], ['Status', statusLabel(viewingDoc.status)], ['Upload Date', viewingDoc.created_at ? fmtDate(viewingDoc.created_at) : 'N/A'], ['File Size', viewingDoc.file_size || 'N/A']].map(([k, v]) => (
                 <div key={k} style={{ padding: '8px 12px', background: 'var(--surface2)', borderRadius: 'var(--r-md)' }}>
                   <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: 'var(--txt4)', marginBottom: 2 }}>{k}</div>
                   <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--txt)', textTransform: 'capitalize' }}>{v}</div>
                 </div>
               ))}
             </div>
+            <div style={{ marginBottom: 10 }}><Badge color={statusColor(viewingDoc.status)}>{statusLabel(viewingDoc.status)}</Badge></div>
+            {ai && ai.confidence && (
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ fontSize: 12, marginBottom: 6, color: 'var(--txt3)' }}>AI Confidence: {Math.round(ai.confidence * 100)}%</div>
+                <div className="progress-track"><div className="progress-fill" style={{ width: `${Math.round(ai.confidence * 100)}%`, background: 'var(--accent)' }} /></div>
+              </div>
+            )}
             {ai && (
               <div className="ai-result-box">
                 <div className="ai-result-title">AI Analysis</div>
-                {Object.entries(ai).filter(([k]) => k !== 'confidence').map(([k, v]) => (
+                {Object.entries(ai).filter(([k]) => !['confidence', 'extractedFields', 'fields'].includes(k)).map(([k, v]) => (
                   <div key={k} className="ai-field" style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <span style={{ textTransform: 'capitalize' }}>{k.replace(/([A-Z])/g, ' $1')}</span>
                     <span style={{ fontWeight: 600 }}>{String(v)}</span>
