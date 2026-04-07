@@ -352,6 +352,7 @@ router.delete('/:id', auth, (req, res) => {
     }
 
     db.prepare(`UPDATE documents SET is_deleted=1, updated_at=datetime('now') WHERE id=? AND family_id=?`).run(req.params.id, req.user.family_id);
+    db.prepare("UPDATE alerts SET is_dismissed=1 WHERE family_id=? AND description LIKE ?").run(req.user.family_id, '%' + existing.name + '%');
 
     // Audit log
     db.prepare(`INSERT INTO audit_log (id, family_id, user_id, action, entity_type, entity_id, meta) VALUES (?, ?, ?, ?, ?, ?, ?)`).run(

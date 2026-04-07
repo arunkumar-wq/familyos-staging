@@ -49,6 +49,7 @@ export default function DocumentsPage({ navigate }) {
   const [statusFilter, setStatusFilter] = useState('all');
   const [scanning, setScanning] = useState(false);
   const [viewingDoc, setViewingDoc] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
   const [toast, setToast] = useState('');
   const [uploadStep, setUploadStep] = useState(1);
   const [uploadedDoc, setUploadedDoc] = useState(null);
@@ -126,8 +127,7 @@ export default function DocumentsPage({ navigate }) {
     }
   };
 
-  const deleteDoc = async (id) => {
-    if (!window.confirm('Delete this document?')) return;
+  const deleteDoc = async (id, name) => {
     await api.delete('/documents/' + id).catch(() => {}); loadDocs();
   };
 
@@ -293,6 +293,7 @@ export default function DocumentsPage({ navigate }) {
                             <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
                               <button className="btn btn-xs btn-teal" onClick={() => viewDoc(d)}>View</button>
                               <button className="btn btn-xs btn-outline" onClick={() => downloadDoc(d)}>Download</button>
+                              <button className="btn btn-xs" style={{ background: 'var(--red)', color: '#fff', borderColor: 'var(--red)' }} onClick={() => setDeleteTarget(d)}>Delete</button>
                             </div>
                           </td>
                         </tr>
@@ -339,6 +340,7 @@ export default function DocumentsPage({ navigate }) {
                         <div style={{ display: 'flex', gap: 8 }}>
                           <button className="btn btn-sm btn-teal" style={{ flex: 1 }} onClick={() => viewDoc(d)}>View</button>
                           <button className="btn btn-sm btn-outline" style={{ flex: 1 }} onClick={() => downloadDoc(d)}>Download</button>
+                          <button className="btn btn-sm" style={{ flex: 1, background: 'var(--red)', color: '#fff', borderColor: 'var(--red)' }} onClick={() => setDeleteTarget(d)}>Delete</button>
                         </div>
                       </div>
                     );
@@ -465,6 +467,32 @@ export default function DocumentsPage({ navigate }) {
           </Modal>
         );
       })()}
+      {deleteTarget && (
+        <Modal
+          title="Delete Document"
+          onClose={() => setDeleteTarget(null)}
+          maxWidth={400}
+          footer={
+            <>
+              <button className="btn btn-outline" onClick={() => setDeleteTarget(null)}>Cancel</button>
+              <button
+                className="btn"
+                style={{ background: '#dc2626', color: '#fff', borderColor: '#dc2626' }}
+                onClick={async () => { await deleteDoc(deleteTarget.id, deleteTarget.name); setDeleteTarget(null); }}
+              >
+                Delete
+              </button>
+            </>
+          }
+        >
+          <div style={{ textAlign: 'center', padding: '8px 0 4px' }}>
+            <div style={{ fontSize: 30, marginBottom: 8 }}>🗑️</div>
+            <p style={{ fontSize: 14, color: 'var(--txt2)', lineHeight: 1.6 }}>
+              Are you sure you want to delete <strong>{deleteTarget.name}</strong>? This action cannot be undone.
+            </p>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }
