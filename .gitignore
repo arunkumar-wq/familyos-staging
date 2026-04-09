@@ -2,6 +2,9 @@ node_modules/
 client/node_modules/
 client/build/
 database/familyos.db
+database/familyos.db-shm
+database/familyos.db-wal
+database/familyos.db-journal
 uploads/*
 !uploads/.gitkeep
 .env
