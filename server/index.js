@@ -74,7 +74,7 @@ app.use((err, req, res, next) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`\n🚀 FamilyOS server running on http://localhost:${PORT}`);
+  console.log(`\n🚀 LINIO server running on http://localhost:${PORT}`);
   console.log(`📦 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🗄️  Database: familyos.db\n`);
 });

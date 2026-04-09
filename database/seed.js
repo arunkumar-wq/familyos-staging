@@ -1,5 +1,5 @@
 /**
- * FamilyOS — Database Seed (US Locale)
+ * LINIO — Database Seed (US Locale)
  * Run: node database/seed.js
  */
 require('dotenv').config();
@@ -9,7 +9,7 @@ const { getDb } = require('./db');
 
 const db = getDb();
 
-console.log('🌱 Seeding FamilyOS database...\n');
+console.log('🌱 Seeding LINIO database...\n');
 
 // ─── CLEAR EXISTING DATA ────────────────────────────────────────────
 db.exec(`
@@ -33,7 +33,7 @@ db.prepare(`INSERT INTO families (id, name, plan) VALUES (?, ?, ?)`).run(familyI
 const passwordHash = bcrypt.hashSync('password123', 10);
 
 const users = [
-  { id: uuidv4(), first: 'Gurmail', last: 'Singh', email: 'gurmail@familyos.ai', phone: '+1 (555) 987-6543', role: 'admin', relation: 'self', dob: '1983-04-14', color: '#0f1f3d' },
+  { id: uuidv4(), first: 'Gurmail', last: 'Singh', email: 'gurmail@linio.ai', phone: '+1 (555) 987-6543', role: 'admin', relation: 'self', dob: '1983-04-14', color: '#0f1f3d' },
   { id: uuidv4(), first: 'Lovely', last: 'Singh', email: 'lovely@gmail.com', phone: '+1 (555) 987-6544', role: 'co-admin', relation: 'spouse', dob: '1986-08-22', color: '#07b98a' },
   { id: uuidv4(), first: 'Raj', last: 'Singh', email: 'raj@gmail.com', phone: '+1 (555) 987-6545', role: 'member', relation: 'son', dob: '2008-03-10', color: '#f59e0b' },
   { id: uuidv4(), first: 'Priya', last: 'Singh', email: 'priya@gmail.com', phone: '+1 (555) 987-6546', role: 'member', relation: 'daughter', dob: '2013-11-05', color: '#f43f5e' },
@@ -183,7 +183,7 @@ auditEntries.forEach((e, i) => insertAudit.run(uuidv4(), familyId, e.user, e.act
 // ─── SUMMARY ────────────────────────────────────────────────────────
 console.log('✅ Seed complete!\n');
 console.log('📌 Login credentials:');
-console.log('   Email:    gurmail@familyos.ai');
+console.log('   Email:    gurmail@linio.ai');
 console.log('   Password: password123\n');
 console.log('📊 Seeded:');
 console.log(`   • 1 family (Singh Family), ${users.length} users`);

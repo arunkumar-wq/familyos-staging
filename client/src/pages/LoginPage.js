@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 
 export default function LoginPage() {
   const { login } = useAuth();
-  const [email, setEmail] = useState('gurmail@familyos.ai');
+  const [email, setEmail] = useState('gurmail@linio.ai');
   const [password, setPassword] = useState('password123');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -19,8 +19,8 @@ export default function LoginPage() {
     <div className="login-bg">
       <div className="login-card">
         <div className="login-logo">
-          <div className="login-logo-icon">F</div>
-          <span className="login-logo-text">FamilyOS</span>
+          <div className="login-logo-icon">L</div>
+          <span className="login-logo-text">LINIO</span>
         </div>
         <h1 className="login-title">Welcome back</h1>
         <p className="login-sub">Sign in to your family command center</p>
@@ -30,7 +30,7 @@ export default function LoginPage() {
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label className="form-label" htmlFor="login-email">Email address</label>
-            <input id="login-email" type="email" className="form-input" value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@family.com" required autoFocus autoComplete="email"/>
+            <input id="login-email" type="email" inputMode="email" className="form-input" value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@family.com" required autoFocus autoComplete="email"/>
           </div>
           <div className="form-group">
             <label className="form-label" htmlFor="login-pw">Password</label>
@@ -43,7 +43,7 @@ export default function LoginPage() {
         <div style={{marginTop:20,padding:16,background:'var(--surface2)',borderRadius:'var(--r-md)',border:'1px solid var(--border)'}}>
           <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'.06em',color:'var(--accent)',marginBottom:8}}>Demo Credentials</div>
           <div style={{fontSize:12,color:'var(--txt2)',lineHeight:1.7}}>
-            <div>Email: gurmail@familyos.ai</div>
+            <div>Email: gurmail@linio.ai</div>
             <div>Password: password123</div>
           </div>
         </div>

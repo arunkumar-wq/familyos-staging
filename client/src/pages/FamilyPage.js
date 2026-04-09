@@ -26,7 +26,7 @@ export default function FamilyPage({ navigate }) {
 
   return (
     <div className="page-inner">
-      <PageHeader title="Family" sub={members.length+' members in your FamilyOS'}>
+      <PageHeader title="Family" sub={members.length+' members in your LINIO'}>
         <button className="btn btn-teal" onClick={() => navigate('add-member')}>+ Add Member</button>
       </PageHeader>
       {error && (

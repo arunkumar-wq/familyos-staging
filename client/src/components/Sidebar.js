@@ -99,7 +99,7 @@ export default function Sidebar({ page, navigate, mobile, onClose }) {
         <div className="sidebar-logo-icon">
           <SvgIcon name="home" size={18} />
         </div>
-        {show && <span className="sidebar-logo-text">FamilyOS</span>}
+        {show && <span className="sidebar-logo-text">LINIO</span>}
         {!mobile && (
           <button
             className="sidebar-collapse-btn"

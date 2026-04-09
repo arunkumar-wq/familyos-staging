@@ -63,7 +63,7 @@ export default function AddMemberPage({ navigate, editMember }) {
   };
   return (
     <div className="page-inner" style={{maxWidth:760}}>
-      <PageHeader title={isEdit?'Edit - '+editMember.first_name+' '+editMember.last_name:'Add Family Member'} sub={isEdit?'Update member details and permissions':'Invite a new member to your FamilyOS'}>
+      <PageHeader title={isEdit?'Edit - '+editMember.first_name+' '+editMember.last_name:'Add Family Member'} sub={isEdit?'Update member details and permissions':'Invite a new member to your LINIO'}>
         <button className="btn btn-outline" onClick={()=>navigate('family')}>Cancel</button>
         <button className="btn btn-teal" onClick={handleSubmit} disabled={saving}>{saving?'Saving...':isEdit?'Save Changes':'Send Invitation'}</button>
       </PageHeader>

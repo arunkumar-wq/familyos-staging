@@ -1,7 +1,7 @@
 {
-  "name": "familyos",
+  "name": "linio",
   "version": "1.0.0",
-  "description": "FamilyOS - AI-Powered Family Command Center",
+  "description": "LINIO - AI-Powered Family Command Center",
   "scripts": {
     "start": "node server/index.js",
     "dev": "concurrently \"nodemon server/index.js\" \"cd client && npm start\"",

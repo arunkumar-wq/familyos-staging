@@ -470,7 +470,13 @@ button{cursor:pointer;font-family:inherit}input,select,textarea{font-family:inhe
   .btn{font-size:12px;padding:0 12px;height:34px}
   .btn-sm{height:28px;padding:0 8px;font-size:11px}
   .btn-xs{height:24px;padding:0 6px;font-size:10px}
-  .btn-lg{height:40px;padding:0 18px;font-size:13px}
+  .btn-lg{height:48px;padding:0 18px;font-size:13px}
+  .login-bg{padding:16px}
+  .login-card{padding:24px;border-radius:var(--r-xl)}
+  .login-title{font-size:20px}
+  .login-sub{font-size:13px;margin-bottom:16px}
+  .login-logo{margin-bottom:20px}
+  .form-input,.form-select,.form-textarea{height:48px;font-size:16px}
 }
 
 /* Document mobile cards */

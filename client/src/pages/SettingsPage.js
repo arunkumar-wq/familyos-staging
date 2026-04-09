@@ -51,7 +51,7 @@ export default function SettingsPage({ navigate }) {
     ['AI Insight Alerts','Receive proactive AI recommendations','aiInsights'],
     ['Portfolio Changes','Track significant portfolio movements','portfolio'],
     ['Family Activity','Know when family members upload or edit documents','familyActivity'],
-    ['Email Digest','Weekly summary of your FamilyOS activity','emailDigest'],
+    ['Email Digest','Weekly summary of your LINIO activity','emailDigest'],
   ];
 
   return (
@@ -163,7 +163,7 @@ export default function SettingsPage({ navigate }) {
               <div className="sec-bar sec-bar-teal">Billing and Plan</div>
               <div style={{ padding:20 }}>
                 <div style={{ background:'var(--accent-light)', border:'1px solid var(--teal-border)', borderRadius:'var(--r-lg)', padding:18, marginBottom:18 }}>
-                  <div style={{ fontSize:15, fontWeight:700, color:'var(--accent)', marginBottom:4 }}>FamilyOS Pro</div>
+                  <div style={{ fontSize:15, fontWeight:700, color:'var(--accent)', marginBottom:4 }}>LINIO Pro</div>
                   <div style={{ fontSize:13, color:'var(--txt2)', marginBottom:10 }}>Unlimited documents, AI insights, 10 family members</div>
                   <div style={{ fontSize:22, fontWeight:700, color:'var(--txt)' }}>$9.99<span style={{ fontSize:13, fontWeight:400, color:'var(--txt3)' }}>/month</span></div>
                 </div>

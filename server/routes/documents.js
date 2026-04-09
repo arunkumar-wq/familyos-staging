@@ -105,7 +105,7 @@ router.get('/:id/download', auth, (req, res) => {
     let ai = null;
     try { ai = doc.ai_summary ? JSON.parse(doc.ai_summary) : null; } catch {}
     const lines = [
-      `FamilyOS Document Summary`, `========================`, ``,
+      `LINIO Document Summary`, `========================`, ``,
       `Name: ${doc.name}`, `Category: ${doc.category}`, `Status: ${doc.status}`,
       `Expiry: ${doc.expiry_date || 'N/A'}`, `Member: ${doc.member_name || 'Unknown'}`,
       `File Size: ${doc.file_size || 'N/A'}`, `AI Analyzed: ${doc.ai_analyzed ? 'Yes' : 'No'}`, ``,

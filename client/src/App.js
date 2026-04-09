@@ -38,7 +38,7 @@ function AppShell() {
   if (loading) return (
     <div className="loading-screen" style={{ height: '100vh' }}>
       <div className="spinner" />
-      <p style={{ color: 'var(--txt3)', fontSize: 13 }}>Loading FamilyOS...</p>
+      <p style={{ color: 'var(--txt3)', fontSize: 13 }}>Loading LINIO...</p>
     </div>
   );
 
