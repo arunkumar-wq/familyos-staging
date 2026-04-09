@@ -24,12 +24,22 @@ function authMiddleware(req, res, next) {
     const decoded = jwt.verify(token, getJwtSecret());
 
     const db = getDb();
-    const user = db.prepare(`
+    let user = db.prepare(`
       SELECT u.*, p.vault, p.portfolio, p.insights, p.family_mgmt
       FROM users u
       LEFT JOIN permissions p ON p.user_id = u.id
       WHERE u.id = ? AND u.is_active = 1
     `).get(decoded.userId);
+
+    // Fallback: after re-seed UUIDs change, but email stays stable
+    if (!user && decoded.email) {
+      user = db.prepare(`
+        SELECT u.*, p.vault, p.portfolio, p.insights, p.family_mgmt
+        FROM users u
+        LEFT JOIN permissions p ON p.user_id = u.id
+        WHERE u.email = ? AND u.is_active = 1
+      `).get(decoded.email);
+    }
 
     if (!user) return res.status(401).json({ error: 'User not found' });
 

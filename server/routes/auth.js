@@ -39,7 +39,7 @@ router.post('/login', (req, res) => {
     db.prepare(`UPDATE users SET last_login = datetime('now') WHERE id = ?`).run(user.id);
 
     const token = jwt.sign(
-      { userId: user.id, familyId: user.family_id },
+      { userId: user.id, email: user.email, familyId: user.family_id },
       getJwtSecret(),
       { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
     );
@@ -85,7 +85,7 @@ router.post('/register', (req, res) => {
     db.prepare(`INSERT INTO permissions (id, user_id, vault, portfolio, insights, family_mgmt) VALUES (?, ?, 'full', 'full', 'full', 'admin')`).run(uuidv4(), userId);
 
     const token = jwt.sign(
-      { userId, familyId },
+      { userId, email: email.toLowerCase().trim(), familyId },
       getJwtSecret(),
       { expiresIn: '7d' }
     );
