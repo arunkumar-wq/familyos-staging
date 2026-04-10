@@ -205,9 +205,9 @@ export default function DashboardPage({ navigate }) {
       <div className="dash-grid-2">
         {/* Portfolio Performance */}
         <div className="card">
-          <div style={{ padding: '18px 20px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-            <div className="section-label" style={{ margin: 0 }}>Portfolio Performance</div>
-            <div className="dash-period-pills">
+          <div style={{ padding: '18px 16px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'nowrap' }}>
+            <div className="section-label" style={{ margin: 0, flex: 1, minWidth: 0 }}>Portfolio Performance</div>
+            <div className="dash-period-pills" style={{ flexShrink: 0 }}>
               {PERIODS.map(p => (
                 <button key={p.key} className={`dash-pill${period === p.key ? ' active' : ''}`} onClick={() => setPeriod(p.key)}>{p.label}</button>
               ))}
