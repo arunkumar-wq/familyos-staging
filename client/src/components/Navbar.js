@@ -159,6 +159,7 @@ export default function Navbar({ page, navigate }) {
           </div>
         </div>
       )}
+      {mobileOpen && <div className="mobile-drawer-overlay" onClick={() => setMobileOpen(false)} />}
     </nav>
   );
 }
