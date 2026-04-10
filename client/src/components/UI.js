@@ -3,7 +3,7 @@ import { initials } from '../utils/formatters';
 
 export function Avatar({ firstName, lastName, color = '#1e3a5f', size = 36, avatarUrl }) {
   if (avatarUrl) {
-    return <img src={avatarUrl} alt={`${firstName || ''} ${lastName || ''}`} style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, background: color }} />;
+    return <img className="avatar" src={avatarUrl} alt={`${firstName || ''} ${lastName || ''}`} style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, background: color }} />;
   }
   return (
     <div className="avatar" style={{ width: size, height: size, background: '#e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
