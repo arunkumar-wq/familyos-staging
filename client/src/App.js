@@ -1,4 +1,4 @@
-import React, { useState, Component } from 'react';
+import React, { useState, useEffect, Component } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Navbar from './components/Navbar';
 import LoginPage from './pages/LoginPage';
@@ -34,6 +34,17 @@ function AppShell() {
   const { user, loading } = useAuth();
   const [page, setPage] = useState('dashboard');
   const [editMemberData, setEditMemberData] = useState(null);
+
+  // Scroll to top on every page change (and initial mount after login).
+  // Must be before conditional returns to satisfy React's rules of hooks.
+  useEffect(() => {
+    if ('scrollRestoration' in window.history) {
+      window.history.scrollRestoration = 'manual';
+    }
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }, [page]);
 
   if (loading) return (
     <div className="loading-screen" style={{ height: '100vh' }}>
