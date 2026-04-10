@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { initials, fmtDate } from '../utils/formatters';
 import api from '../utils/api';
@@ -26,6 +26,9 @@ export default function Navbar({ page, navigate }) {
   const [bellOpen, setBellOpen] = useState(false);
   const [alerts, setAlerts] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const touchStartX = useRef(0);
+  const touchDeltaX = useRef(0);
+  const navRef = useRef(null);
 
   useEffect(() => {
     api.get('/alerts').then(r => {
@@ -37,6 +40,41 @@ export default function Navbar({ page, navigate }) {
 
   const closeAll = () => { setMoreOpen(false); setUserMenu(false); setBellOpen(false); };
   const handleNav = (id) => { navigate(id); setMobileOpen(false); closeAll(); };
+
+  useEffect(() => {
+    if (!mobileOpen && navRef.current) {
+      navRef.current.style.transform = '';
+      navRef.current.style.transition = '';
+    }
+  }, [mobileOpen]);
+
+  const touchHandlers = {
+    onTouchStart: (e) => {
+      touchStartX.current = e.touches[0].clientX;
+      touchDeltaX.current = 0;
+    },
+    onTouchMove: (e) => {
+      const delta = e.touches[0].clientX - touchStartX.current;
+      if (delta > 0) {
+        touchDeltaX.current = delta;
+        if (navRef.current) {
+          navRef.current.style.transform = `translateX(${delta}px)`;
+          navRef.current.style.transition = 'none';
+        }
+      }
+    },
+    onTouchEnd: () => {
+      if (navRef.current) {
+        navRef.current.style.transition = 'transform 300ms ease';
+        if (touchDeltaX.current > 80) {
+          setMobileOpen(false);
+        } else {
+          navRef.current.style.transform = 'translateX(0)';
+        }
+      }
+      touchDeltaX.current = 0;
+    }
+  };
 
   const dismissAlert = async (id) => {
     setAlerts(a => a.filter(x => x.id !== id));
@@ -58,7 +96,7 @@ export default function Navbar({ page, navigate }) {
         </div>
       </div>
 
-      <div className={`navbar-nav${mobileOpen ? ' mobile-open' : ''}`}>
+      <div ref={navRef} className={`navbar-nav${mobileOpen ? ' mobile-open' : ''}`} {...touchHandlers}>
         {NAV_ITEMS.map(item => (
           <button key={item.id} className={`navbar-link${page === item.id ? ' active' : ''}`} onClick={() => handleNav(item.id)} aria-current={page === item.id ? 'page' : undefined}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={item.icon}/></svg>
