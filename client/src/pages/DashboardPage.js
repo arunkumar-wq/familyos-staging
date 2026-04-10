@@ -13,6 +13,13 @@ const SEV_STYLES = {
   success:  { bg: '#059669', label: 'AI' },
 };
 
+const PERIODS = [
+  { key: '6m', label: '6M', months: 6 },
+  { key: '1y', label: '1Y', months: 12 },
+  { key: '2y', label: '2Y', months: 24 },
+  { key: 'all', label: 'All', months: Infinity },
+];
+
 export default function DashboardPage({ navigate }) {
   const { user } = useAuth();
   const [summary, setSummary] = useState(null);
@@ -21,6 +28,7 @@ export default function DashboardPage({ navigate }) {
   const [members, setMembers] = useState([]);
   const [portfolio, setPortfolio] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [period, setPeriod] = useState('1y');
   const lineRef = useRef(); const lineChart = useRef();
   const donutRef = useRef(); const donutChart = useRef();
 
@@ -40,36 +48,97 @@ export default function DashboardPage({ navigate }) {
     }).catch(console.error).finally(() => setLoading(false));
   }, []);
 
+  // Filter snapshots by selected period
+  const filteredSnapshots = useCallback(() => {
+    const all = summary?.snapshots || [];
+    if (!all.length) return [];
+    const p = PERIODS.find(x => x.key === period);
+    if (!p || p.months === Infinity) return all;
+    const cutoff = new Date();
+    cutoff.setMonth(cutoff.getMonth() - p.months);
+    const filtered = all.filter(s => new Date(s.snapshot_date) >= cutoff);
+    return filtered.length ? filtered : all;
+  }, [summary, period]);
+
+  // Chart summary stats
+  const chartStats = useCallback(() => {
+    const snaps = filteredSnapshots();
+    if (snaps.length < 2) return null;
+    const first = snaps[0].net_worth;
+    const last = snaps[snaps.length - 1].net_worth;
+    const peak = Math.max(...snaps.map(s => s.net_worth));
+    const totalChange = last - first;
+    const pctReturn = first > 0 ? ((last - first) / first * 100) : 0;
+    const avgMonthly = totalChange / (snaps.length - 1);
+    return { pctReturn, peak, avgMonthly };
+  }, [filteredSnapshots]);
+
   // Portfolio Performance Line Chart
   useEffect(() => {
-    if (!summary?.snapshots?.length || !lineRef.current) return;
+    const snaps = filteredSnapshots();
+    if (!snaps.length || !lineRef.current) return;
     if (lineChart.current) lineChart.current.destroy();
     const ctx = lineRef.current.getContext('2d');
     const grad = ctx.createLinearGradient(0, 0, 0, 220);
-    grad.addColorStop(0, 'rgba(10,158,158,.12)');
+    grad.addColorStop(0, 'rgba(10,158,158,0.25)');
     grad.addColorStop(1, 'rgba(10,158,158,0)');
     lineChart.current = new Chart(ctx, {
       type: 'line',
       data: {
-        labels: summary.snapshots.map(s => new Date(s.snapshot_date).toLocaleDateString('en-US', { month: 'short' })),
-        datasets: [{
-          data: summary.snapshots.map(s => s.net_worth),
-          borderColor: '#0a9e9e', backgroundColor: grad, fill: true, tension: 0.4,
-          pointRadius: 3, pointBackgroundColor: '#0a9e9e', pointBorderColor: '#fff', pointBorderWidth: 2, borderWidth: 2.5
-        }],
+        labels: snaps.map(s => new Date(s.snapshot_date).toLocaleDateString('en-US', { month: 'short', year: '2-digit' })),
+        datasets: [
+          {
+            label: 'Net Worth',
+            data: snaps.map(s => s.net_worth),
+            borderColor: '#0a9e9e', backgroundColor: grad, fill: true, tension: 0.4,
+            pointRadius: 4, pointBackgroundColor: '#0a9e9e', pointBorderColor: '#fff', pointBorderWidth: 2, borderWidth: 2.5
+          },
+          {
+            label: 'Assets',
+            data: snaps.map(s => s.total_assets),
+            borderColor: '#3883f6', tension: 0.4,
+            pointRadius: 0, borderWidth: 1.5, fill: false
+          },
+          {
+            label: 'Liabilities',
+            data: snaps.map(s => s.total_liabilities),
+            borderColor: '#dc2626', borderDash: [5, 5], tension: 0.4,
+            pointRadius: 0, borderWidth: 1.5, fill: false
+          }
+        ],
       },
       options: {
         responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => fmtK(ctx.raw) } } },
+        plugins: {
+          legend: { position: 'bottom', labels: { font: { size: 11 }, usePointStyle: true, padding: 16, boxWidth: 8 } },
+          tooltip: {
+            backgroundColor: 'rgba(15,31,61,0.95)', titleFont: { size: 12 }, bodyFont: { size: 13, weight: 'bold' },
+            padding: 10, cornerRadius: 8, displayColors: true,
+            callbacks: {
+              title: ctx => ctx[0]?.label || '',
+              label: ctx => {
+                const val = fmtK(ctx.raw);
+                const idx = ctx.dataIndex;
+                if (idx > 0) {
+                  const prev = ctx.dataset.data[idx - 1];
+                  const diff = ctx.raw - prev;
+                  const sign = diff >= 0 ? '+' : '';
+                  return `${val}  (${sign}${fmtK(diff)} vs prev)`;
+                }
+                return val;
+              }
+            }
+          }
+        },
         scales: {
-          x: { grid: { display: false }, ticks: { font: { size: 11 }, color: '#9ca3af' } },
+          x: { grid: { display: false }, ticks: { font: { size: 11 }, color: '#9ca3af', maxTicksLimit: 8 } },
           y: { grid: { color: 'rgba(0,0,0,.04)' }, ticks: { font: { size: 11 }, color: '#9ca3af', callback: v => fmtK(v) } }
         }
       },
     });
     setTimeout(() => lineChart.current?.resize(), 100);
     return () => { if (lineChart.current) lineChart.current.destroy(); };
-  }, [summary]);
+  }, [summary, period, filteredSnapshots]);
 
   // Asset Allocation Donut
   useEffect(() => {
@@ -136,13 +205,39 @@ export default function DashboardPage({ navigate }) {
       <div className="dash-grid-2">
         {/* Portfolio Performance */}
         <div className="card">
-          <div style={{ padding: '18px 20px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div className="section-label">Portfolio Performance</div>
-            <select style={{ border: '1px solid var(--border)', borderRadius: 'var(--r-sm)', padding: '4px 8px', fontSize: 12, background: 'var(--surface)', color: 'var(--txt2)' }}>
-              <option>Net Worth</option>
-            </select>
+          <div style={{ padding: '18px 20px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+            <div className="section-label" style={{ margin: 0 }}>Portfolio Performance</div>
+            <div className="dash-period-pills">
+              {PERIODS.map(p => (
+                <button key={p.key} className={`dash-pill${period === p.key ? ' active' : ''}`} onClick={() => setPeriod(p.key)}>{p.label}</button>
+              ))}
+            </div>
           </div>
           <div className="dash-chart-wrap"><canvas ref={lineRef} /></div>
+          {(() => {
+            const s = chartStats();
+            if (!s) return null;
+            return (
+              <div className="dash-chart-stats">
+                <div className="dash-chart-stat">
+                  <span className="dash-chart-stat-label">Return</span>
+                  <span className="dash-chart-stat-value" style={{ color: s.pctReturn >= 0 ? 'var(--green)' : 'var(--red)' }}>
+                    {s.pctReturn >= 0 ? '+' : ''}{s.pctReturn.toFixed(1)}%
+                  </span>
+                </div>
+                <div className="dash-chart-stat">
+                  <span className="dash-chart-stat-label">Peak</span>
+                  <span className="dash-chart-stat-value">{fmtK(s.peak)}</span>
+                </div>
+                <div className="dash-chart-stat">
+                  <span className="dash-chart-stat-label">Avg Monthly</span>
+                  <span className="dash-chart-stat-value" style={{ color: s.avgMonthly >= 0 ? 'var(--green)' : 'var(--red)' }}>
+                    {s.avgMonthly >= 0 ? '+' : ''}{fmtK(s.avgMonthly)}
+                  </span>
+                </div>
+              </div>
+            );
+          })()}
         </div>
 
         {/* AI Alerts Grid */}

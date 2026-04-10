@@ -23,7 +23,7 @@ router.get('/summary', auth, (req, res) => {
     const snapshots = db.prepare(`
       SELECT net_worth, total_assets, total_liabilities, snapshot_date
       FROM net_worth_snapshots WHERE family_id=?
-      ORDER BY snapshot_date ASC LIMIT 12
+      ORDER BY snapshot_date ASC LIMIT 999
     `).all(fid);
 
     const recentActivity = db.prepare(`
