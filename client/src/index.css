@@ -406,7 +406,7 @@ button{cursor:pointer;font-family:inherit}input,select,textarea{font-family:inhe
   .dash-greeting{margin-bottom:14px}
   .dash-greeting-title{font-size:22px}
   .dash-greeting-sub{font-size:12px}
-  .dash-stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;max-width:100%}
+  .dash-stats-grid{display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:1fr;gap:10px;margin-bottom:16px;max-width:100%}
   .dash-stat-card{padding:10px 12px;gap:4px;display:flex;flex-direction:column;min-height:0}
   .dash-stat-card-top{gap:6px}
   .dash-stat-card-icon{width:28px;height:28px}
@@ -436,6 +436,7 @@ button{cursor:pointer;font-family:inherit}input,select,textarea{font-family:inhe
 
 /* iPhone 17 Pro Max (430px width) */
 @media(max-width:430px){
+  .dash-stats-grid{grid-auto-rows:1fr}
   .page-scroll{padding:12px 10px}
   .page-inner{padding:0}
   .page-header{flex-direction:column;gap:10px}
