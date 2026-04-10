@@ -406,14 +406,14 @@ button{cursor:pointer;font-family:inherit}input,select,textarea{font-family:inhe
   .dash-greeting{margin-bottom:14px}
   .dash-greeting-title{font-size:22px}
   .dash-greeting-sub{font-size:12px}
-  .dash-stats-grid{grid-template-columns:1fr;gap:10px;margin-bottom:16px;max-width:100%}
-  .dash-stat-card{padding:10px 12px;gap:4px}
-  .dash-stat-card-top{gap:8px}
-  .dash-stat-card-icon{width:32px;height:32px}
-  .dash-stat-card-icon svg{width:15px;height:15px}
-  .dash-stat-card-label{font-size:9px}
-  .dash-stat-card-value{font-size:18px}
-  .dash-stat-card-sub{font-size:10px;padding-left:40px}
+  .dash-stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;max-width:100%}
+  .dash-stat-card{padding:10px 12px;gap:4px;display:flex;flex-direction:column;min-height:0}
+  .dash-stat-card-top{gap:6px}
+  .dash-stat-card-icon{width:28px;height:28px}
+  .dash-stat-card-icon svg{width:14px;height:14px}
+  .dash-stat-card-label{font-size:9px;margin-bottom:0}
+  .dash-stat-card-value{font-size:20px;line-height:1}
+  .dash-stat-card-row{gap:6px}
   .dash-stat-card .badge{font-size:9px;padding:1px 6px}
   .dash-stat-card-sub{display:none}
   .data-table{font-size:12px}
@@ -477,6 +477,10 @@ button{cursor:pointer;font-family:inherit}input,select,textarea{font-family:inhe
   .login-sub{font-size:13px;margin-bottom:16px}
   .login-logo{margin-bottom:20px}
   .form-input,.form-select,.form-textarea{height:48px;font-size:16px}
+  .dash-stat-card{padding:8px 10px;gap:3px}
+  .dash-stat-card-icon{width:24px;height:24px}
+  .dash-stat-card-icon svg{width:12px;height:12px}
+  .dash-stat-card-value{font-size:17px}
 }
 
 /* Document mobile cards */
