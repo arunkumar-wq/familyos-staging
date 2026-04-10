@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS users (
   relation      TEXT,                           -- self | spouse | son | daughter | father | mother | other
   date_of_birth TEXT,
   avatar_color  TEXT DEFAULT '#0f1f3d',
+  avatar_url    TEXT DEFAULT NULL,
   is_active     BOOLEAN NOT NULL DEFAULT 1,
   last_login    TEXT,
   created_at    TEXT NOT NULL DEFAULT (datetime('now')),

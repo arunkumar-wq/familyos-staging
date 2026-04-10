@@ -45,18 +45,13 @@ export default function Topbar({ title, onMenuClick, navigate }) {
             }} aria-hidden="true" />
           )}
         </button>
-        <button
-          className="avatar"
-          onClick={() => navigate('profile')}
-          aria-label="Edit profile"
-          style={{
-            width: 36, height: 36,
-            background: user?.avatar_color || 'var(--blue)',
-            fontSize: 12, border: 'none', cursor: 'pointer',
-          }}
-        >
-          {initials(user?.first_name, user?.last_name)}
-        </button>
+        {user?.avatar_url ? (
+          <img src={user.avatar_url} alt={user.first_name} onClick={() => navigate('profile')} style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover', cursor: 'pointer', border: 'none', background: user?.avatar_color || '#e5e7eb' }} />
+        ) : (
+          <button className="avatar" onClick={() => navigate('profile')} aria-label="Edit profile" style={{ width: 36, height: 36, background: '#e5e7eb', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          </button>
+        )}
       </div>
     </div>
   );

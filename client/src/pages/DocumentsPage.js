@@ -162,7 +162,7 @@ export default function DocumentsPage({ navigate }) {
   const grouped = {};
   docs.forEach(d => {
     const key = d.member_name || 'Unknown';
-    if (!grouped[key]) grouped[key] = { docs: [], color: d.avatar_color || '#1a3a5c' };
+    if (!grouped[key]) grouped[key] = { docs: [], color: d.avatar_color || '#1a3a5c', avatar_url: d.avatar_url || null };
     grouped[key].docs.push(d);
   });
 
@@ -255,9 +255,13 @@ export default function DocumentsPage({ navigate }) {
                   <React.Fragment key={name}>
                     <tr><td colSpan={6} style={{ padding: 0 }}>
                       <div className="doc-member-row">
-                        <div className="avatar" style={{ width: 24, height: 24, background: group.color, fontSize: 9 }}>
-                          {name.split(' ').map(w => w[0]).join('').slice(0, 2)}
-                        </div>
+                        {group.avatar_url ? (
+                          <img src={group.avatar_url} alt={name} style={{ width: 24, height: 24, borderRadius: '50%', objectFit: 'cover', background: group.color || '#e5e7eb' }} />
+                        ) : (
+                          <div className="avatar" style={{ width: 24, height: 24, background: '#e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                          </div>
+                        )}
                         {name}
                       </div>
                     </td></tr>
@@ -311,7 +315,13 @@ export default function DocumentsPage({ navigate }) {
               {Object.entries(grouped).map(([name, group]) => (
                 <React.Fragment key={name}>
                   <div className="doc-member-row">
-                    <div className="avatar" style={{ width: 24, height: 24, background: group.color, fontSize: 9 }}>{name.split(' ').map(w => w[0]).join('').slice(0, 2)}</div>
+                    {group.avatar_url ? (
+                      <img src={group.avatar_url} alt={name} style={{ width: 24, height: 24, borderRadius: '50%', objectFit: 'cover', background: group.color || '#e5e7eb' }} />
+                    ) : (
+                      <div className="avatar" style={{ width: 24, height: 24, background: '#e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                      </div>
+                    )}
                     {name}
                   </div>
                   {group.docs.map(d => {
@@ -383,7 +393,13 @@ export default function DocumentsPage({ navigate }) {
               <div style={{ display: 'grid', gap: 8 }}>
                 {members.map(m => (
                   <button key={m.id} className={`btn ${selectedMember === m.id ? 'btn-teal' : 'btn-outline'}`} style={{ justifyContent: 'flex-start' }} onClick={() => setSelectedMember(m.id)}>
-                    <span className="avatar" style={{ width: 24, height: 24, background: m.avatar_color || '#1a3a5c', fontSize: 9 }}>{((m.first_name || '')[0] || '') + ((m.last_name || '')[0] || '')}</span>
+                    {m.avatar_url ? (
+                      <img src={m.avatar_url} alt={m.first_name} style={{ width: 24, height: 24, borderRadius: '50%', objectFit: 'cover', background: m.avatar_color || '#e5e7eb' }} />
+                    ) : (
+                      <span className="avatar" style={{ width: 24, height: 24, background: '#e5e7eb', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                      </span>
+                    )}
                     {m.first_name} {m.last_name}
                   </button>
                 ))}

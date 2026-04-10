@@ -100,9 +100,13 @@ export default function Navbar({ page, navigate }) {
 
         {/* User Menu */}
         <div className="navbar-user" onClick={() => { setUserMenu(!userMenu); setMoreOpen(false); setBellOpen(false); }} style={{position:'relative'}}>
-          <div className="avatar" style={{ width: 30, height: 30, background: user?.avatar_color || '#1a3a5c', fontSize: 11 }}>
-            {initials(user?.first_name, user?.last_name)}
-          </div>
+          {user?.avatar_url ? (
+            <img src={user.avatar_url} alt={user.first_name} style={{ width: 30, height: 30, borderRadius: '50%', objectFit: 'cover', background: user?.avatar_color || '#e5e7eb' }} />
+          ) : (
+            <div className="avatar" style={{ width: 30, height: 30, background: '#e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            </div>
+          )}
           <span className="navbar-user-name">{family?.name || 'Family'}</span>
           <span className="navbar-user-chevron">&#9662;</span>
           {userMenu && (

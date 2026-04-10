@@ -30,7 +30,7 @@ router.get('/members', auth, (req, res) => {
     const db = getDb();
     const members = db.prepare(`
       SELECT u.id, u.first_name, u.last_name, u.email, u.phone, u.role, u.relation,
-             u.date_of_birth, u.avatar_color, u.last_login, u.created_at,
+             u.date_of_birth, u.avatar_color, u.avatar_url, u.last_login, u.created_at,
              p.vault, p.portfolio, p.insights, p.family_mgmt,
              (SELECT COUNT(*) FROM documents d WHERE d.owner_id = u.id AND d.is_deleted=0) as doc_count
       FROM users u
@@ -239,7 +239,7 @@ router.get('/audit', auth, (req, res) => {
 
     // Single query to get all members with their document category counts
     const members = db.prepare(`
-      SELECT u.id, u.first_name, u.last_name, u.avatar_color
+      SELECT u.id, u.first_name, u.last_name, u.avatar_color, u.avatar_url
       FROM users u
       WHERE u.family_id = ? AND u.is_active = 1
       ORDER BY u.created_at ASC
@@ -272,6 +272,7 @@ router.get('/audit', auth, (req, res) => {
         first_name: m.first_name,
         last_name: m.last_name,
         avatar_color: m.avatar_color || '#0f1f3d',
+        avatar_url: m.avatar_url || null,
         totalDocs,
         categoryBreakdown: catMap,
         score,

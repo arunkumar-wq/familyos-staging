@@ -33,16 +33,16 @@ db.prepare(`INSERT INTO families (id, name, plan) VALUES (?, ?, ?)`).run(familyI
 const passwordHash = bcrypt.hashSync('password123', 10);
 
 const users = [
-  { id: uuidv4(), first: 'Gurmail', last: 'Singh', email: 'gurmail@linio.ai', phone: '+1 (555) 987-6543', role: 'admin', relation: 'self', dob: '1983-04-14', color: '#0f1f3d' },
-  { id: uuidv4(), first: 'Lovely', last: 'Singh', email: 'lovely@gmail.com', phone: '+1 (555) 987-6544', role: 'co-admin', relation: 'spouse', dob: '1986-08-22', color: '#07b98a' },
-  { id: uuidv4(), first: 'Raj', last: 'Singh', email: 'raj@gmail.com', phone: '+1 (555) 987-6545', role: 'member', relation: 'son', dob: '2008-03-10', color: '#f59e0b' },
-  { id: uuidv4(), first: 'Priya', last: 'Singh', email: 'priya@gmail.com', phone: '+1 (555) 987-6546', role: 'member', relation: 'daughter', dob: '2013-11-05', color: '#f43f5e' },
-  { id: uuidv4(), first: 'Mom', last: 'Singh', email: 'mom@gmail.com', phone: '+1 (555) 987-6547', role: 'view-only', relation: 'mother', dob: '1955-06-15', color: '#6c2bd9' },
+  { id: uuidv4(), first: 'Gurmail', last: 'Singh', email: 'gurmail@linio.ai', phone: '+1 (555) 987-6543', role: 'admin', relation: 'self', dob: '1983-04-14', color: '#0f1f3d', avatar: '/avatars/Gurmail.png' },
+  { id: uuidv4(), first: 'Lovely', last: 'Singh', email: 'lovely@gmail.com', phone: '+1 (555) 987-6544', role: 'co-admin', relation: 'spouse', dob: '1986-08-22', color: '#07b98a', avatar: '/avatars/Lovely.png' },
+  { id: uuidv4(), first: 'Raj', last: 'Singh', email: 'raj@gmail.com', phone: '+1 (555) 987-6545', role: 'member', relation: 'son', dob: '2008-03-10', color: '#f59e0b', avatar: '/avatars/Raj.png' },
+  { id: uuidv4(), first: 'Priya', last: 'Singh', email: 'priya@gmail.com', phone: '+1 (555) 987-6546', role: 'member', relation: 'daughter', dob: '2013-11-05', color: '#f43f5e', avatar: '/avatars/Priya.png' },
+  { id: uuidv4(), first: 'Mom', last: 'Singh', email: 'mom@gmail.com', phone: '+1 (555) 987-6547', role: 'view-only', relation: 'mother', dob: '1955-06-15', color: '#6c2bd9', avatar: '/avatars/Mom.png' },
 ];
 
 const insertUser = db.prepare(`
-  INSERT INTO users (id, family_id, first_name, last_name, email, phone, password_hash, role, relation, date_of_birth, avatar_color)
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  INSERT INTO users (id, family_id, first_name, last_name, email, phone, password_hash, role, relation, date_of_birth, avatar_color, avatar_url)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `);
 const insertPerm = db.prepare(`
   INSERT INTO permissions (id, user_id, vault, portfolio, insights, family_mgmt)
@@ -57,7 +57,7 @@ const permMap = {
 };
 
 users.forEach(u => {
-  insertUser.run(u.id, familyId, u.first, u.last, u.email, u.phone, passwordHash, u.role, u.relation, u.dob, u.color);
+  insertUser.run(u.id, familyId, u.first, u.last, u.email, u.phone, passwordHash, u.role, u.relation, u.dob, u.color, u.avatar || null);
   const p = permMap[u.role] || permMap.member;
   insertPerm.run(uuidv4(), u.id, p.vault, p.portfolio, p.insights, p.family_mgmt);
 });

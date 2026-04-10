@@ -18,7 +18,7 @@ router.get('/', auth, (req, res) => {
     const db = getDb();
     const { category, status, member, search } = req.query;
     let query = `
-      SELECT d.*, u.first_name || ' ' || u.last_name as member_name, u.avatar_color
+      SELECT d.*, u.first_name || ' ' || u.last_name as member_name, u.avatar_color, u.avatar_url
       FROM documents d
       LEFT JOIN users u ON u.id = d.owner_id
       WHERE d.family_id = ? AND d.is_deleted = 0

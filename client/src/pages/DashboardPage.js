@@ -296,9 +296,13 @@ export default function DashboardPage({ navigate }) {
           <div style={{ display: 'flex', justifyContent: 'center', gap: 20, padding: '0 20px 24px', flexWrap: 'wrap' }}>
             {members.map(m => (
               <div key={m.id} style={{ textAlign: 'center', cursor: 'pointer' }} onClick={() => navigate('family')}>
-                <div className="avatar" style={{ width: 52, height: 52, background: m.avatar_color || '#1a3a5c', fontSize: 16, margin: '0 auto 8px' }}>
-                  {((m.first_name||'')[0]||'')+((m.last_name||'')[0]||'')}
-                </div>
+                {m.avatar_url ? (
+                  <img src={m.avatar_url} alt={m.first_name} style={{ width: 52, height: 52, borderRadius: '50%', objectFit: 'cover', margin: '0 auto 8px', background: m.avatar_color || '#e5e7eb' }} />
+                ) : (
+                  <div className="avatar" style={{ width: 52, height: 52, background: '#e5e7eb', margin: '0 auto 8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                  </div>
+                )}
                 <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--txt)' }}>{m.first_name}</div>
                 <div style={{ fontSize: 11, color: 'var(--txt4)', textTransform: 'capitalize' }}>{m.role === 'admin' ? 'Owner' : m.role}</div>
               </div>

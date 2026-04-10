@@ -1,10 +1,13 @@
 import React from 'react';
 import { initials } from '../utils/formatters';
 
-export function Avatar({ firstName, lastName, color = '#1e3a5f', size = 36 }) {
+export function Avatar({ firstName, lastName, color = '#1e3a5f', size = 36, avatarUrl }) {
+  if (avatarUrl) {
+    return <img src={avatarUrl} alt={`${firstName || ''} ${lastName || ''}`} style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, background: color }} />;
+  }
   return (
-    <div className="avatar" style={{ width: size, height: size, background: color, fontSize: size * 0.33 }}>
-      {initials(firstName, lastName)}
+    <div className="avatar" style={{ width: size, height: size, background: '#e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <svg width={size * 0.45} height={size * 0.45} viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
     </div>
   );
 }

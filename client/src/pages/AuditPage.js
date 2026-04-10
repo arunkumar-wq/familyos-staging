@@ -105,9 +105,13 @@ export default function AuditPage({ navigate }) {
                 <tr key={m.id}>
                   <td>
                     <div style={{display:'flex',alignItems:'center',gap:8}}>
-                      <div className="avatar" style={{width:28,height:28,background:m.avatar_color||'var(--navy)',fontSize:10}}>
-                        {(m.first_name?.[0]||'')+(m.last_name?.[0]||'')}
-                      </div>
+                      {m.avatar_url ? (
+                        <img src={m.avatar_url} alt={m.first_name} style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover', background: m.avatar_color || '#e5e7eb' }} />
+                      ) : (
+                        <div className="avatar" style={{ width: 28, height: 28, background: '#e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                        </div>
+                      )}
                       <span style={{fontWeight:600}}>{m.first_name} {m.last_name}</span>
                     </div>
                   </td>

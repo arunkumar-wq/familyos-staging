@@ -59,9 +59,13 @@ export default function EditProfilePage({ navigate }) {
         <div className="sec-bar sec-bar-teal">Profile Photo</div>
         <div style={{padding:20}}>
           <div style={{display:'flex',alignItems:'center',gap:18}}>
-            <div className="avatar" style={{width:80,height:80,background:user?.avatar_color||'var(--accent)',fontSize:26}}>
-              {(user?.first_name?.[0]||'')+(user?.last_name?.[0]||'')}
-            </div>
+            {user?.avatar_url ? (
+              <img src={user.avatar_url} alt={user.first_name} style={{ width: 80, height: 80, borderRadius: '50%', objectFit: 'cover', background: user?.avatar_color || '#e5e7eb' }} />
+            ) : (
+              <div className="avatar" style={{ width: 80, height: 80, background: '#e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              </div>
+            )}
             <div style={{fontSize:13,color:'var(--txt3)'}}>Avatar color can be changed from family member settings</div>
           </div>
         </div>
