@@ -55,13 +55,17 @@ export default function DocumentsPage({ navigate }) {
   const [pendingFile, setPendingFile] = useState(null);
   const [showFilter, setShowFilter] = useState(false);
   const [statusFilter, setStatusFilter] = useState('all');
-  const [scanning, setScanning] = useState(false);
   const [viewingDoc, setViewingDoc] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [toast, setToast] = useState('');
   const [uploadStep, setUploadStep] = useState(1);
   const [uploadedDoc, setUploadedDoc] = useState(null);
+  const [showCamera, setShowCamera] = useState(false);
+  const [capturedImage, setCapturedImage] = useState(null);
+  const [cameraStream, setCameraStream] = useState(null);
   const fileInputRef = useRef();
+  const videoRef = useRef(null);
+  const canvasRef = useRef(null);
 
   useEffect(() => { const t = setTimeout(() => setDebouncedSearch(search), 350); return () => clearTimeout(t); }, [search]);
   useEffect(() => { api.get('/family/members').then(r => { setMembers(r.data); }).catch(()=>{}); }, []);
@@ -123,9 +127,72 @@ export default function DocumentsPage({ navigate }) {
     finally { setUploading(false); }
   };
 
-  const runAiScan = () => {
-    setScanning(true);
-    setTimeout(() => { setScanning(false); loadDocs(); }, 2000);
+  const startCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: { ideal: 'environment' },
+          width: { ideal: 1920 },
+          height: { ideal: 1080 }
+        },
+        audio: false
+      });
+      setCameraStream(stream);
+      setShowCamera(true);
+      setCapturedImage(null);
+    } catch (err) {
+      alert('Camera access denied. Please allow camera permission in your browser settings to use AI Scan.');
+    }
+  };
+
+  // Attach stream to video when showCamera changes (iOS-safe — video ref ready after render)
+  useEffect(() => {
+    if (showCamera && videoRef.current && cameraStream) {
+      videoRef.current.srcObject = cameraStream;
+      videoRef.current.setAttribute('autoplay', '');
+      videoRef.current.setAttribute('playsinline', '');
+      videoRef.current.setAttribute('muted', '');
+      videoRef.current.play().catch(() => {});
+    }
+  }, [showCamera, cameraStream]);
+
+  const capturePhoto = () => {
+    if (!videoRef.current || !canvasRef.current) return;
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    canvas.width = video.videoWidth || 1280;
+    canvas.height = video.videoHeight || 720;
+    canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+    setCapturedImage(canvas.toDataURL('image/jpeg', 0.90));
+    video.pause();
+  };
+
+  const retakePhoto = () => {
+    setCapturedImage(null);
+    if (videoRef.current && cameraStream) {
+      videoRef.current.srcObject = cameraStream;
+      videoRef.current.play().catch(() => {});
+    }
+  };
+
+  const stopCamera = () => {
+    if (cameraStream) {
+      cameraStream.getTracks().forEach(t => t.stop());
+      setCameraStream(null);
+    }
+    setShowCamera(false);
+    setCapturedImage(null);
+  };
+
+  const acceptPhoto = () => {
+    if (!capturedImage) return;
+    fetch(capturedImage)
+      .then(r => r.blob())
+      .then(blob => {
+        const file = new File([blob], 'scan_' + Date.now() + '.jpg', { type: 'image/jpeg' });
+        stopCamera();
+        handleFile(file);
+      });
   };
 
   const viewDoc = (d) => {
@@ -213,7 +280,10 @@ export default function DocumentsPage({ navigate }) {
       )}
       <PageHeader title="Family Documents" sub={`${stats.total || 0} documents · 12 categories · Last AI scan 2 hours ago`}>
         <button className="btn btn-outline" style={{gap:6}} onClick={() => setShowFilter(!showFilter)}>&#9776; Filter</button>
-        <button className="btn btn-teal" style={{gap:6}} onClick={runAiScan} disabled={scanning}>{scanning ? 'Scanning...' : '\u2728 AI Scan'}</button>
+        <button className="btn btn-accent" style={{gap:6}} onClick={startCamera}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          AI Scan
+        </button>
         <button className="btn btn-brand" onClick={openUploadFlow} style={{gap:6}}>+ Upload</button>
       </PageHeader>
 
@@ -595,6 +665,69 @@ export default function DocumentsPage({ navigate }) {
             </p>
           </div>
         </Modal>
+      )}
+      {showCamera && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: '#000', display: 'flex', flexDirection: 'column' }}>
+          {/* Header */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: '#111', flexShrink: 0 }}>
+            <span style={{ color: '#fff', fontWeight: 700, fontSize: 16 }}>Scan Document</span>
+            <button onClick={stopCamera} style={{ background: 'none', border: 'none', color: '#fff', fontSize: 28, cursor: 'pointer', lineHeight: 1, padding: '4px 8px' }}>&times;</button>
+          </div>
+
+          {/* Camera / Preview */}
+          <div style={{ flex: 1, position: 'relative', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            {!capturedImage ? (
+              <>
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                />
+                {/* Corner bracket alignment guide */}
+                <div style={{ position: 'absolute', inset: '8%', border: '2.5px dashed rgba(10,158,158,0.7)', borderRadius: 16, pointerEvents: 'none' }}>
+                  <div style={{ position: 'absolute', width: 30, height: 30, top: -2, left: -2, borderTop: '4px solid #0a9e9e', borderLeft: '4px solid #0a9e9e', borderRadius: '8px 0 0 0' }}></div>
+                  <div style={{ position: 'absolute', width: 30, height: 30, top: -2, right: -2, borderTop: '4px solid #0a9e9e', borderRight: '4px solid #0a9e9e', borderRadius: '0 8px 0 0' }}></div>
+                  <div style={{ position: 'absolute', width: 30, height: 30, bottom: -2, left: -2, borderBottom: '4px solid #0a9e9e', borderLeft: '4px solid #0a9e9e', borderRadius: '0 0 0 8px' }}></div>
+                  <div style={{ position: 'absolute', width: 30, height: 30, bottom: -2, right: -2, borderBottom: '4px solid #0a9e9e', borderRight: '4px solid #0a9e9e', borderRadius: '0 0 8px 0' }}></div>
+                </div>
+                <div style={{ position: 'absolute', bottom: 90, left: '50%', transform: 'translateX(-50%)', color: '#fff', fontSize: 13, fontWeight: 600, background: 'rgba(0,0,0,0.6)', padding: '6px 16px', borderRadius: 20, whiteSpace: 'nowrap' }}>
+                  Align document within frame
+                </div>
+              </>
+            ) : (
+              <img src={capturedImage} alt="Captured" style={{ width: '100%', height: '100%', objectFit: 'contain', background: '#111' }} />
+            )}
+            <canvas ref={canvasRef} style={{ display: 'none' }} />
+          </div>
+
+          {/* Bottom Controls */}
+          <div style={{ padding: '16px 24px 28px', background: '#111', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 24, flexShrink: 0 }}>
+            {!capturedImage ? (
+              <button onClick={capturePhoto} aria-label="Capture" style={{
+                width: 68, height: 68, borderRadius: '50%', border: '5px solid #fff',
+                background: 'transparent', cursor: 'pointer', display: 'flex',
+                alignItems: 'center', justifyContent: 'center', WebkitTapHighlightColor: 'transparent'
+              }}>
+                <div style={{ width: 52, height: 52, borderRadius: '50%', background: '#fff' }}></div>
+              </button>
+            ) : (
+              <>
+                <button onClick={retakePhoto} style={{
+                  padding: '12px 28px', background: '#333', color: '#fff', border: 'none',
+                  borderRadius: 12, fontSize: 15, fontWeight: 600, cursor: 'pointer',
+                  minHeight: 48, WebkitTapHighlightColor: 'transparent'
+                }}>Retake</button>
+                <button onClick={acceptPhoto} style={{
+                  padding: '12px 28px', background: '#0a9e9e', color: '#fff', border: 'none',
+                  borderRadius: 12, fontSize: 15, fontWeight: 600, cursor: 'pointer',
+                  minHeight: 48, WebkitTapHighlightColor: 'transparent'
+                }}>Use Photo</button>
+              </>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );
