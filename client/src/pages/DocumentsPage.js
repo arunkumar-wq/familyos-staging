@@ -537,6 +537,27 @@ export default function DocumentsPage({ navigate }) {
                   {typeof aiResults.confidence === 'number' && <span style={{ marginLeft: 6, fontSize: 11, opacity: 0.8 }}>({Math.round(aiResults.confidence * 100)}%)</span>}
                 </div>
               )}
+
+              {/* OCR failed completely */}
+              {aiResults && (!aiResults.type || aiResults.type === 'Unknown Document' || aiResults.type === 'Document') && (
+                <div style={{ marginBottom: 12, padding: '10px 14px', background: '#fef3c7', border: '1px solid #f59e0b', borderRadius: 8, fontSize: 12, color: '#92400e' }}>
+                  ⚠️ <strong>AI couldn't detect the document type.</strong> Please select the member and category manually.
+                </div>
+              )}
+
+              {/* OCR low confidence */}
+              {aiResults && aiResults.confidence && aiResults.confidence < 0.6 && aiResults.type && aiResults.type !== 'Unknown Document' && (
+                <div style={{ marginBottom: 12, padding: '10px 14px', background: '#fef3c7', border: '1px solid #f59e0b', borderRadius: 8, fontSize: 12, color: '#92400e' }}>
+                  ⚠️ <strong>Low AI confidence ({Math.round(aiResults.confidence * 100)}%).</strong> Please verify the member and category below.
+                </div>
+              )}
+
+              {/* API error — no aiResults at all */}
+              {!aiResults && !analyzing && (
+                <div style={{ marginBottom: 12, padding: '10px 14px', background: '#fee2e2', border: '1px solid #ef4444', borderRadius: 8, fontSize: 12, color: '#991b1b' }}>
+                  ❌ <strong>AI analysis failed.</strong> Please select member and category manually.
+                </div>
+              )}
               <div className="section-label" style={{ marginBottom: 10 }}>Select Family Member</div>
               <div style={{ display: 'grid', gap: 8 }}>
                 {members.map(m => (
@@ -595,6 +616,11 @@ export default function DocumentsPage({ navigate }) {
                   </button>
                 ))}
               </div>
+              {uploadForm.category === 'other' && aiResults && (!aiResults.category || aiResults.category === 'other') && (
+                <div style={{ marginTop: 10, padding: '8px 12px', background: '#fef3c7', border: '1px solid #f59e0b', borderRadius: 8, fontSize: 11, color: '#92400e' }}>
+                  AI couldn't auto-detect the category. Please select one above.
+                </div>
+              )}
             </div>
           )}
 
