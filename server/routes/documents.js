@@ -170,6 +170,10 @@ router.post('/analyze', auth, upload.single('file'), async (req, res) => {
       }
     }
 
+    console.log('--- OCR TEXT (first 300 chars) ---');
+    console.log(ocrResult.text.substring(0, 300));
+    console.log('--- OCR confidence:', ocrResult.confidence, '---');
+
     // Parse fields from OCR text + filename
     const parsed = parseDocumentFields(ocrResult.text, file.originalname);
 
@@ -219,6 +223,7 @@ router.post('/analyze', auth, upload.single('file'), async (req, res) => {
       matchedMemberId: matchedMember ? matchedMember.id : null,
       matchedMemberName: matchedMember ? matchedMember.first_name + ' ' + matchedMember.last_name : null,
       nameWarning: nameWarning,
+      ocrText: ocrResult.text.substring(0, 500),
       ocrTextLength: ocrResult.text.length,
       ocrConfidence: ocrResult.confidence,
     });
@@ -624,7 +629,21 @@ function parseDocumentFields(ocrText, filename) {
   let detectedName = null;
   let category = 'other';
 
-  if (text.includes('PASSPORT') || text.includes('DEPARTMENT OF STATE') || lower.includes('passport')) {
+  // Fuzzy keyword match — handles OCR noise like "PASSP ORT", "PASS PORT", "P4SSPORT"
+  const fuzzyMatch = (t, keywords) => {
+    const noSpace = t.replace(/\s/g, '');
+    for (const kw of keywords) {
+      if (t.includes(kw)) return true;
+      if (noSpace.includes(kw)) return true;
+      if (kw.length >= 6) {
+        const half = kw.substring(0, Math.ceil(kw.length * 0.6));
+        if (t.includes(half) || noSpace.includes(half)) return true;
+      }
+    }
+    return false;
+  };
+
+  if (fuzzyMatch(text, ['PASSPORT', 'DEPARTMENTOFSTATE', 'UNITEDSTATESOFAMERICA']) || text.includes('MRZ') || (text.includes('SURNAME') && text.includes('GIVEN')) || lower.includes('passport')) {
     type = 'US Passport';
     category = 'identity';
     const num = text.match(/(?:PASSPORT\s*(?:NO|NUMBER|#)?\.?\s*[:.]?\s*)(\d{8,9})/i) || text.match(/\b(\d{9})\b/);
@@ -643,7 +662,7 @@ function parseDocumentFields(ocrText, filename) {
     if (expiry) expiryDate = expiry[1];
     detectedName = (name && given) ? given[1] + ' ' + name[1] : (name ? name[1] : null);
 
-  } else if (text.includes('DRIVER') || text.includes('LICENSE') || text.includes('DMV') || lower.includes('license') || lower.includes('driver') || lower.includes('dl')) {
+  } else if (fuzzyMatch(text, ['DRIVER', 'LICENSE', 'DRIVERLICENSE', 'DMV', 'CLASSC', 'CLASSD']) || (text.includes('DL') && (text.includes('EXP') || text.includes('DOB'))) || lower.includes('license') || lower.includes('driver')) {
     type = 'US Driver License';
     category = 'identity';
     const dlNum = text.match(/(?:DL|LICENSE|LIC)[\s#.:]*([A-Z]?\d{7,8})/i) || text.match(/\b([A-Z]\d{7})\b/);
@@ -663,7 +682,7 @@ function parseDocumentFields(ocrText, filename) {
     if (expiry) expiryDate = expiry[1];
     detectedName = (name && given) ? given[1] + ' ' + name[1] : null;
 
-  } else if (text.includes('BIRTH') || text.includes('CERTIFICATE OF LIVE') || lower.includes('birth')) {
+  } else if (fuzzyMatch(text, ['BIRTH', 'CERTIFICATEOFLIVE', 'LIVEBORN']) || (text.includes('CHILD') && text.includes('FATHER')) || lower.includes('birth')) {
     type = 'Birth Certificate';
     category = 'identity';
     const certNum = text.match(/(?:CERTIFICATE|CERT)[\s#.:NO]*(\d{4}[\-]?[A-Z]*[\-]?\d+)/i) || text.match(/\b(\d{4}-[A-Z]{2}-\d+)\b/);
@@ -680,7 +699,36 @@ function parseDocumentFields(ocrText, filename) {
     expiryDate = null;
     detectedName = name ? name[1] : null;
 
-  } else if (text.includes('INSURANCE') || text.includes('POLICY') || lower.includes('insurance')) {
+  } else if (fuzzyMatch(text, ['MEDICARE', 'HEALTHINSURANCE', 'MEDICARENUMBER']) || lower.includes('medicare')) {
+    type = 'Medicare Card';
+    category = 'medical';
+    const medNum = text.match(/\b(\d[A-Z0-9]{2,3}[-\s][A-Z0-9]{2,3}[-\s][A-Z0-9]{2,4})\b/) || ['', 'Not detected'];
+    fields = [
+      { key: 'Medicare Number', value: medNum[1] || 'Not detected', confidence: medNum[1] ? 0.90 : 0.40 },
+    ];
+
+  } else if (fuzzyMatch(text, ['MARRIAGE', 'SPOUSE', 'MATRIMONY']) || lower.includes('marriage')) {
+    type = 'Marriage Certificate';
+    category = 'legal';
+    fields = [
+      { key: 'Type', value: 'Marriage Certificate', confidence: 0.88 },
+    ];
+
+  } else if (fuzzyMatch(text, ['SOCIALSECURITY', 'SSN', 'SOCIAL SECURITY']) || lower.includes('ssn') || lower.includes('social')) {
+    type = 'Social Security Card';
+    category = 'identity';
+    fields = [
+      { key: 'Type', value: 'Social Security Card', confidence: 0.90 },
+    ];
+
+  } else if (fuzzyMatch(text, ['PROPERTY', 'DEED', 'PARCEL', 'ASSESSED', 'PROPERTYTAX']) || lower.includes('property') || lower.includes('deed')) {
+    type = 'Property Document';
+    category = 'property';
+    fields = [
+      { key: 'Type', value: 'Property Document', confidence: 0.85 },
+    ];
+
+  } else if (fuzzyMatch(text, ['INSURANCE', 'POLICY', 'PREMIUM', 'COVERAGE', 'INSURED']) || lower.includes('insurance') || lower.includes('policy')) {
     type = 'Insurance Policy';
     category = 'insurance';
     const policyNum = text.match(/(?:POLICY)[\s#.:NO]*([A-Z0-9\-]+)/i);
@@ -692,13 +740,24 @@ function parseDocumentFields(ocrText, filename) {
     ];
     if (expiry) expiryDate = expiry[1];
 
-  } else if (text.includes('1099') || text.includes('W-2') || text.includes('TAX RETURN') || lower.includes('tax') || lower.includes('1099') || lower.includes('w2')) {
+  } else if (fuzzyMatch(text, ['1099', 'W-2', 'TAXRETURN', 'INTERNALREVENUE', 'IRS']) || text.includes('TAX') || lower.includes('tax') || lower.includes('1099')) {
     type = 'Tax Document';
-    category = 'tax';
+    category = 'finance';
     const yearMatch = text.match(/20\d{2}/);
     fields = [
       { key: 'Document Type', value: text.includes('1099') ? '1099' : text.includes('W-2') ? 'W-2' : 'Tax Document', confidence: 0.92 },
       { key: 'Tax Year', value: yearMatch ? yearMatch[0] : 'Not detected', confidence: yearMatch ? 0.90 : 0.40 },
+    ];
+
+  } else if (text.includes('ISSUED') || text.includes('EXPIRES') || text.includes('VALID') || text.includes('DATE OF') || text.includes('NUMBER')) {
+    // Last resort: generic government document indicators
+    type = 'Official Document';
+    category = 'other';
+    const anyDate = text.match(/(\d{2}[\/-]\d{2}[\/-]\d{4}|\d{2}\s+[A-Z]{3}\s+\d{4})/);
+    const anyNum = text.match(/(?:NO|NUMBER|#)[:\s.]*([A-Z0-9\-]{5,})/);
+    fields = [
+      { key: 'Document Number', value: anyNum ? anyNum[1] : 'Not detected', confidence: anyNum ? 0.80 : 0.30 },
+      { key: 'Date Found', value: anyDate ? anyDate[1] : 'Not detected', confidence: anyDate ? 0.85 : 0.30 },
     ];
 
   } else {
