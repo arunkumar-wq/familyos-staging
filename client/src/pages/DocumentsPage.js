@@ -29,10 +29,10 @@ function guessCat(name) {
   const n = name.toLowerCase();
   if (n.includes('passport') || n.includes('ssn') || n.includes('license') || n.includes('driver')) return 'identity';
   if (n.includes('birth_cert') || n.includes('birth certificate')) return 'identity';
-  if (n.includes('insurance') || n.includes('policy_')) return 'insurance';
-  if (n.includes('tax_') || n.includes('w-2') || n.includes('w2_') || n.includes('1099') || n.includes('1040')) return 'tax';
-  if (n.includes('deed') || n.includes('property_') || n.includes('mortgage')) return 'property';
-  if (n.includes('medical_') || n.includes('health_') || n.includes('medicare') || n.includes('prescription')) return 'medical';
+  if (n.includes('insurance') || n.includes('policy')) return 'insurance';
+  if (n.includes('deed') || n.includes('property') || n.includes('mortgage')) return 'property';
+  if (n.includes('1099') || n.includes('1040') || n.includes('w-2') || n.includes('w2')) return 'finance';
+  if (n.includes('medical') || n.includes('health') || n.includes('medicare') || n.includes('prescription')) return 'medical';
   if (n.includes('diploma') || n.includes('transcript')) return 'education';
   return 'other';
 }
