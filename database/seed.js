@@ -144,15 +144,15 @@ snapshots.forEach(([a, l], i) => {
 
 // ─── ALERTS ─────────────────────────────────────────────────────────
 const alerts = [
-  { user: gurmail.id, type: 'urgent', icon: '🛂', title: 'Passport expires in 45 days', desc: 'Passport expires in 45 days', sev: 'critical' },
-  { user: gurmail.id, type: 'warning', icon: '🛡', title: 'Insurance review recommended', desc: 'Insurance review recommended', sev: 'warning' },
-  { user: gurmail.id, type: 'info', icon: '📄', title: 'Missing document detected', desc: 'Missing document detected', sev: 'info' },
-  { user: gurmail.id, type: 'info', icon: '📊', title: 'Portfolio rebalance alert', desc: 'Portfolio rebalance alert', sev: 'info' },
-  { user: gurmail.id, type: 'success', icon: '📈', title: 'Net worth up $16.7K this month', desc: 'Portfolio at all-time high' },
+  { user: gurmail.id, type: 'urgent', icon: '🛂', title: 'Passport expires in 45 days', desc: 'Passport expires in 45 days', sev: 'critical', page: 'documents' },
+  { user: gurmail.id, type: 'warning', icon: '🛡', title: 'Insurance review recommended', desc: 'Insurance review recommended', sev: 'warning', page: 'documents' },
+  { user: gurmail.id, type: 'info', icon: '📄', title: 'Missing document detected', desc: 'Missing document detected', sev: 'info', page: 'documents' },
+  { user: gurmail.id, type: 'info', icon: '📊', title: 'Portfolio rebalance alert', desc: 'Portfolio rebalance alert', sev: 'info', page: 'portfolio' },
+  { user: gurmail.id, type: 'success', icon: '📈', title: 'Net worth up $16.7K this month', desc: 'Portfolio at all-time high', page: 'portfolio' },
 ];
 
-const insertAlert = db.prepare(`INSERT INTO alerts (id, family_id, user_id, type, icon, title, description) VALUES (?, ?, ?, ?, ?, ?, ?)`);
-alerts.forEach(a => insertAlert.run(uuidv4(), familyId, a.user, a.type, a.icon, a.title, a.desc));
+const insertAlert = db.prepare(`INSERT INTO alerts (id, family_id, user_id, type, icon, title, description, link_page) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`);
+alerts.forEach(a => insertAlert.run(uuidv4(), familyId, a.user, a.type, a.icon, a.title, a.desc, a.page || null));
 
 // ─── TASKS ──────────────────────────────────────────────────────────
 const tasks = [

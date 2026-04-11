@@ -161,6 +161,15 @@ export default function DashboardPage({ navigate }) {
   const allocData = portfolio?.allocation || [];
   const allocColors = ['#3883f6', '#1e429f', '#059669', '#d97706', '#6b7280'];
 
+  const getAlertPage = (alert) => {
+    const t = (alert.title || '').toLowerCase();
+    if (t.includes('passport') || t.includes('license') || t.includes('document') || t.includes('birth') || t.includes('missing')) return 'documents';
+    if (t.includes('portfolio') || t.includes('rebalance') || t.includes('net worth')) return 'portfolio';
+    if (t.includes('insurance') || t.includes('review')) return 'documents';
+    if (t.includes('tax')) return 'documents';
+    return 'notifications';
+  };
+
   return (
     <div className="page-inner">
       {/* Greeting */}
@@ -249,22 +258,28 @@ export default function DashboardPage({ navigate }) {
             {alerts.slice(0, 4).map((a) => {
               const sev = SEV_STYLES[a.severity] || SEV_STYLES.info;
               return (
-                <div key={a.id} className="ai-alert-card" style={{ background: sev.bg, color: '#fff' }}>
+                <div key={a.id} className="ai-alert-card" style={{ background: sev.bg, color: '#fff', cursor: 'pointer' }} onClick={() => navigate(getAlertPage(a))}>
                   <div className="ai-alert-card-header">
                     <span className="ai-alert-card-title">{a.title}</span>
                     <span className="ai-alert-badge">{sev.label}</span>
                   </div>
                   <div className="ai-alert-card-body">{a.description || a.title}</div>
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 4 }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ opacity: 0.5 }}><path d="M9 18l6-6-6-6"/></svg>
+                  </div>
                 </div>
               );
             })}
             {tasks.filter(t => !t.is_done).slice(0, 1).map(t => (
-              <div key={t.id} className="ai-alert-card" style={{ background: 'var(--surface2)', color: 'var(--txt)', border: '1px solid var(--border)' }}>
+              <div key={t.id} className="ai-alert-card" style={{ background: 'var(--surface2)', color: 'var(--txt)', border: '1px solid var(--border)', cursor: 'pointer' }} onClick={() => navigate('documents')}>
                 <div className="ai-alert-card-header">
                   <span className="ai-alert-card-title">{t.title}</span>
                   <span className="ai-alert-badge" style={{ background: 'var(--border2)', color: 'var(--txt3)' }}>Todo</span>
                 </div>
                 <div className="ai-alert-card-body">{t.title}</div>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 4 }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ opacity: 0.5 }}><path d="M9 18l6-6-6-6"/></svg>
+                </div>
               </div>
             ))}
           </div>

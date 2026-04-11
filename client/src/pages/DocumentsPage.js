@@ -21,12 +21,13 @@ function statusColor(s) { return { valid:'green', expiring:'amber', expired:'red
 function statusLabel(s) { return { valid:'Valid', expiring:'Expiring', expired:'Expired', review:'Review' }[s] || s; }
 function guessCat(name) {
   const n = name.toLowerCase();
-  if (n.includes('passport')||n.includes('ssn')||n.includes('license')||n.includes('id')) return 'identity';
-  if (n.includes('insurance')) return 'insurance';
-  if (n.includes('tax')||n.includes('itr')||n.includes('w-2')||n.includes('1099')) return 'finance';
-  if (n.includes('property')||n.includes('deed')||n.includes('mortgage')) return 'property';
-  if (n.includes('medical')||n.includes('vaccination')||n.includes('health')) return 'medical';
-  if (n.includes('certificate')||n.includes('diploma')||n.includes('school')) return 'education';
+  if (n.includes('passport') || n.includes('ssn') || n.includes('license') || n.includes('driver') || n.includes('birth')) return 'identity';
+  if (n.includes('insurance') || n.includes('policy')) return 'insurance';
+  if (n.includes('tax') || n.includes('w-2') || n.includes('w2') || n.includes('1099') || n.includes('1040')) return 'tax';
+  if (n.includes('deed') || n.includes('property') || n.includes('mortgage')) return 'property';
+  if (n.includes('marriage') || n.includes('will') || n.includes('trust') || n.includes('power_of_attorney')) return 'legal';
+  if (n.includes('medical') || n.includes('health') || n.includes('medicare') || n.includes('prescription')) return 'medical';
+  if (n.includes('diploma') || n.includes('school') || n.includes('transcript') || n.includes('degree')) return 'education';
   return 'other';
 }
 
@@ -56,7 +57,7 @@ export default function DocumentsPage({ navigate }) {
   const fileInputRef = useRef();
 
   useEffect(() => { const t = setTimeout(() => setDebouncedSearch(search), 350); return () => clearTimeout(t); }, [search]);
-  useEffect(() => { api.get('/family/members').then(r => { setMembers(r.data); if (r.data[0]) setSelectedMember(r.data[0].id); }).catch(()=>{}); }, []);
+  useEffect(() => { api.get('/family/members').then(r => { setMembers(r.data); }).catch(()=>{}); }, []);
   useEffect(() => { loadDocs(); }, [cat, debouncedSearch, statusFilter]);
 
   const loadDocs = async () => {
@@ -75,6 +76,12 @@ export default function DocumentsPage({ navigate }) {
     if (!file) return;
     setPendingFile(file);
     setUploadForm(f => ({ ...f, name: file.name.replace(/\.[^.]+$/, ''), category: guessCat(file.name) }));
+    // Auto-detect member from filename
+    const fname = file.name.toLowerCase();
+    const matchedMember = members.find(m => fname.includes(m.first_name.toLowerCase()));
+    if (matchedMember) {
+      setSelectedMember(matchedMember.id);
+    }
     setUploadStep(2);
     setShowUpload(true);
   };
@@ -95,6 +102,9 @@ export default function DocumentsPage({ navigate }) {
       setTimeout(() => setToast(''), 4000);
       setUploadedDoc(resp.data);
       setUploadStep(4);
+      if (resp.data.aiSummary?.category && resp.data.aiSummary.category !== 'other') {
+        setUploadForm(f => ({ ...f, category: resp.data.aiSummary.category }));
+      }
       loadDocs();
     } catch (e) { setUploadError(e.response?.data?.error || 'Upload failed'); }
     finally { setUploading(false); }
@@ -422,21 +432,58 @@ export default function DocumentsPage({ navigate }) {
 
           {uploadStep === 4 && uploadedDoc && (() => {
             const ai = uploadedDoc.aiSummary || parseAi(uploadedDoc) || {};
-            const pairs = extractedEntries(ai);
-            const selected = members.find(m => m.id === selectedMember);
+            const aiFields = Array.isArray(ai.fields) ? ai.fields : [];
+            const legacyPairs = aiFields.length === 0 ? extractedEntries(ai) : [];
+            const ocrConf = typeof ai.ocrConfidence === 'number' ? Math.round(ai.ocrConfidence) : null;
+            const confBadge = (c) => {
+              const pct = Math.round((c || 0) * 100);
+              let bg = '#dc2626', color = '#fff';
+              if (pct >= 90) { bg = '#059669'; color = '#fff'; }
+              else if (pct >= 70) { bg = '#fbbf24'; color = '#1f2937'; }
+              return <span style={{ background: bg, color, fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 10, whiteSpace: 'nowrap' }}>{pct}%</span>;
+            };
             return (
               <div>
                 <div style={{ color: 'var(--green)', fontWeight: 700, fontSize: 16, marginBottom: 10 }}>Document Uploaded Successfully!</div>
-                <div className="ai-result-box">
-                  <div className="ai-field"><strong>📄 Document:</strong> {pendingFile?.name || uploadedDoc.name}</div>
-                  <div className="ai-field"><strong>👤 Uploaded by:</strong> {user?.first_name} {user?.last_name}</div>
-                  <div className="ai-field"><strong>👥 For:</strong> {selected ? `${selected.first_name} ${selected.last_name}` : 'Unknown'}</div>
-                  <div className="ai-field"><strong>📁 Category:</strong> {uploadForm.category}</div>
-                  <div className="ai-field"><strong>📅 Uploaded:</strong> {fmtDate(new Date())}</div>
-                  <div className="ai-field"><strong>🤖 Document Type:</strong> {ai.type || 'Document'}</div>
-                  <div className="ai-field"><strong>Confidence:</strong> {ai.confidence ? `${Math.round(ai.confidence * 100)}%` : '—'}</div>
-                  {pairs.map(([k, v]) => <div key={k} className="ai-field"><strong>{k}:</strong> {String(v)}</div>)}
-                </div>
+
+                {uploadedDoc.autoMatchedMember && (
+                  <div style={{ background: 'var(--green-bg)', border: '1px solid var(--green-border)', borderRadius: 8, padding: '8px 12px', marginBottom: 10, color: 'var(--green)', fontSize: 12, fontWeight: 600 }}>
+                    ✓ Auto-matched to {uploadedDoc.autoMatchedMember}
+                  </div>
+                )}
+                {uploadedDoc.nameWarning && (
+                  <div style={{ background: 'var(--amber-bg)', border: '1px solid var(--amber-border)', borderRadius: 8, padding: '8px 12px', marginBottom: 10, color: 'var(--amber)', fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                    <span>⚠ {uploadedDoc.nameWarning}</span>
+                    <button className="btn btn-xs btn-outline" style={{ flexShrink: 0 }} onClick={() => { closeUploadFlow(); navigate && navigate('add-member'); }}>Add member</button>
+                  </div>
+                )}
+
+                {ocrConf !== null && (
+                  <div style={{ marginBottom: 12 }}>
+                    <div style={{ fontSize: 11, color: 'var(--txt3)', marginBottom: 4, display: 'flex', justifyContent: 'space-between' }}>
+                      <span>OCR Quality</span><span style={{ fontWeight: 700 }}>{ocrConf}%</span>
+                    </div>
+                    <div className="progress-track"><div className="progress-fill" style={{ width: `${ocrConf}%`, background: ocrConf >= 70 ? 'var(--green)' : ocrConf >= 40 ? '#fbbf24' : 'var(--red)' }} /></div>
+                  </div>
+                )}
+
+                <div style={{ fontSize: 11, color: 'var(--txt4)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 6 }}>Detected: {ai.type || 'Document'}</div>
+
+                {aiFields.length > 0 ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 10 }}>
+                    {aiFields.map((f, i) => (
+                      <div key={i} style={{ display: 'grid', gridTemplateColumns: '110px 1fr auto', gap: 8, alignItems: 'center' }}>
+                        <span style={{ fontSize: 11, color: 'var(--txt3)', fontWeight: 600 }}>{f.key}</span>
+                        <input type="text" defaultValue={f.value} style={{ height: 28, fontSize: 12, border: '1px solid var(--border)', borderRadius: 4, padding: '0 6px', width: '100%', background: 'var(--surface)', color: 'var(--txt)' }} />
+                        {confBadge(f.confidence)}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="ai-result-box">
+                    {legacyPairs.map(([k, v]) => <div key={k} className="ai-field"><strong>{k}:</strong> {String(v)}</div>)}
+                  </div>
+                )}
               </div>
             );
           })()}

@@ -2,6 +2,7 @@ const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
+const Tesseract = require('tesseract.js');
 const { getDb } = require('../../database/db');
 const auth = require('../middleware/auth');
 const { requirePermission } = require('../middleware/auth');
@@ -148,7 +149,7 @@ router.get('/:id', auth, (req, res) => {
 });
 
 // POST /api/documents/upload
-router.post('/upload', auth, upload.single('file'), (req, res) => {
+router.post('/upload', auth, upload.single('file'), async (req, res) => {
   try {
     const db = getDb();
     const { name, category, ownerId, notes } = req.body;
@@ -179,12 +180,64 @@ router.post('/upload', auth, upload.single('file'), (req, res) => {
     // Validate name length
     const docName = (name || file.originalname).slice(0, 255);
 
-    // Extract structured data + summary
+    // Real OCR extraction
     const uploadsRoot = path.join(__dirname, '..', '..', 'uploads');
     const fullPath = path.join(uploadsRoot, file.filename);
-    const aiSummary = simulateAIAnalysis(file.originalname, validCategory, fullPath);
+    const ocr = await ocrExtract(fullPath, file.mimetype);
+    const parsed = parseDocumentFields(ocr.text, file.originalname);
 
-    // Derive expiry + status from extracted data (if available)
+    // If OCR produced no text at all, fall back to legacy simulated analysis
+    let aiSummary;
+    if (ocr.text && ocr.text.trim().length > 10) {
+      aiSummary = {
+        type: parsed.type,
+        confidence: parsed.confidence,
+        fields: parsed.fields,
+        expiryDate: parsed.expiryDate,
+        ocrConfidence: ocr.confidence,
+        ocrTextLength: ocr.text.length,
+      };
+    } else {
+      const fallback = simulateAIAnalysis(file.originalname, validCategory, fullPath);
+      aiSummary = { ...fallback, ocrConfidence: 0, ocrTextLength: 0 };
+    }
+
+    // Auto-match owner with family members using OCR-extracted name
+    let autoMatchedMember = null;
+    let autoMatchedId = null;
+    let nameWarning = null;
+
+    if (parsed.detectedName) {
+      const members = db.prepare(`SELECT id, first_name, last_name FROM users WHERE family_id=?`).all(req.user.family_id);
+      const match = members.find(m =>
+        parsed.detectedName.toUpperCase().includes(m.first_name.toUpperCase()) ||
+        parsed.detectedName.toUpperCase().includes(m.last_name.toUpperCase())
+      );
+      if (match) {
+        autoMatchedMember = match.first_name + ' ' + match.last_name;
+        autoMatchedId = match.id;
+        if (!ownerId || ownerId === req.user.id) {
+          resolvedOwnerId = match.id;
+        }
+      } else {
+        nameWarning = "Name '" + parsed.detectedName + "' doesn't match any family member";
+      }
+    }
+
+    // Fallback: filename-based member matching
+    if (!autoMatchedMember) {
+      const members = db.prepare(`SELECT id, first_name, last_name FROM users WHERE family_id=?`).all(req.user.family_id);
+      const fnameMatch = members.find(m => file.originalname.toLowerCase().includes(m.first_name.toLowerCase()));
+      if (fnameMatch) {
+        autoMatchedMember = fnameMatch.first_name + ' ' + fnameMatch.last_name;
+        autoMatchedId = fnameMatch.id;
+      }
+    }
+
+    // Use detected category if user left it as 'other'
+    const finalCategory = (validCategory && validCategory !== 'other') ? validCategory : (parsed.category || 'other');
+
+    // Derive expiry + status from extracted data
     let expiryDate = aiSummary.expiryDate || null;
     let status = 'current';
     if (expiryDate) {
@@ -207,7 +260,7 @@ router.post('/upload', auth, upload.single('file'), (req, res) => {
       resolvedOwnerId,
       docName,
       file.originalname,
-      validCategory,
+      finalCategory,
       file.filename,
       formatFileSize(file.size),
       file.mimetype,
@@ -280,7 +333,14 @@ router.post('/upload', auth, upload.single('file'), (req, res) => {
     }
 
     const doc = db.prepare(`SELECT * FROM documents WHERE id = ?`).get(id);
-    res.status(201).json({ ...doc, aiSummary });
+    res.status(201).json({
+      ...doc,
+      aiSummary,
+      autoMatchedMember,
+      autoMatchedId,
+      nameWarning,
+      ocrText: (ocr.text || '').substring(0, 500),
+    });
   } catch (err) {
     console.error('POST /documents/upload error:', err.message);
     res.status(500).json({ error: 'Failed to upload document' });
@@ -454,6 +514,125 @@ function extractStructuredDataFromFile(filename, fullPath) {
     docType: 'document',
     confidence: 0.8,
   };
+}
+
+// ---- Real OCR extraction via Tesseract.js ----
+async function ocrExtract(filePath, mimeType) {
+  const ocrTypes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+  if (!ocrTypes.includes(mimeType)) {
+    return { text: '', confidence: 0 };
+  }
+  try {
+    const worker = await Tesseract.createWorker('eng');
+    const { data } = await worker.recognize(filePath);
+    await worker.terminate();
+    return { text: data.text || '', confidence: data.confidence || 0 };
+  } catch (err) {
+    console.error('OCR error:', err.message);
+    return { text: '', confidence: 0 };
+  }
+}
+
+// ---- Parse OCR text into structured fields ----
+function parseDocumentFields(ocrText, filename) {
+  const text = (ocrText || '').toUpperCase();
+  const lower = (filename || '').toLowerCase();
+  let type = 'Unknown Document';
+  let fields = [];
+  let expiryDate = null;
+  let detectedName = null;
+  let category = 'other';
+
+  if (text.includes('PASSPORT') || text.includes('DEPARTMENT OF STATE') || lower.includes('passport')) {
+    type = 'US Passport';
+    category = 'identity';
+    const num = text.match(/(?:PASSPORT\s*(?:NO|NUMBER|#)?\.?\s*[:.]?\s*)(\d{8,9})/i) || text.match(/\b(\d{9})\b/);
+    const expiry = text.match(/(?:EXPIR|EXP|DATE OF EXPIR)[A-Z\s]*[:.]?\s*(\d{2}[\/-]\d{2}[\/-]\d{4}|\d{2}\s+[A-Z]{3}\s+\d{4})/i);
+    const name = text.match(/(?:SURNAME|LAST NAME|NAME)[:\s]*([A-Z]+)/);
+    const given = text.match(/(?:GIVEN|FIRST)[A-Z\s]*[:\s]*([A-Z]+)/);
+    const dob = text.match(/(?:DATE OF BIRTH|DOB|BIRTH)[:\s]*(\d{2}[\/-]\d{2}[\/-]\d{4}|\d{2}\s+[A-Z]{3}\s+\d{4})/i);
+
+    fields = [
+      { key: 'Passport Number', value: num ? num[1] : 'Not detected', confidence: num ? 0.96 : 0.40 },
+      { key: 'Full Name', value: (name && given) ? given[1] + ' ' + name[1] : (name ? name[1] : 'Not detected'), confidence: name ? 0.94 : 0.40 },
+      { key: 'Date of Birth', value: dob ? dob[1] : 'Not detected', confidence: dob ? 0.95 : 0.40 },
+      { key: 'Expiry Date', value: expiry ? expiry[1] : 'Not detected', confidence: expiry ? 0.97 : 0.40 },
+      { key: 'Issuing Country', value: text.includes('UNITED STATES') ? 'United States' : 'USA', confidence: 0.98 },
+    ];
+    if (expiry) expiryDate = expiry[1];
+    detectedName = (name && given) ? given[1] + ' ' + name[1] : (name ? name[1] : null);
+
+  } else if (text.includes('DRIVER') || text.includes('LICENSE') || text.includes('DMV') || lower.includes('license') || lower.includes('driver') || lower.includes('dl')) {
+    type = 'US Driver License';
+    category = 'identity';
+    const dlNum = text.match(/(?:DL|LICENSE|LIC)[\s#.:]*([A-Z]?\d{7,8})/i) || text.match(/\b([A-Z]\d{7})\b/);
+    const expiry = text.match(/(?:EXP|EXPIR)[A-Z\s]*[:.]?\s*(\d{2}[\/-]\d{2}[\/-]\d{4})/i);
+    const name = text.match(/(?:LN|LAST|SURNAME)[:\s]*([A-Z]+)/);
+    const given = text.match(/(?:FN|FIRST|GIVEN)[:\s]*([A-Z]+)/);
+    const dob = text.match(/(?:DOB|BIRTH)[:\s]*(\d{2}[\/-]\d{2}[\/-]\d{4})/i);
+    const state = text.match(/(CALIFORNIA|TEXAS|NEW YORK|FLORIDA|ILLINOIS|OHIO|GEORGIA|MICHIGAN|ARIZONA|WASHINGTON)/i);
+
+    fields = [
+      { key: 'DL Number', value: dlNum ? dlNum[1] : 'Not detected', confidence: dlNum ? 0.95 : 0.40 },
+      { key: 'Full Name', value: (name && given) ? given[1] + ' ' + name[1] : (name ? name[1] : 'Not detected'), confidence: name ? 0.93 : 0.40 },
+      { key: 'Date of Birth', value: dob ? dob[1] : 'Not detected', confidence: dob ? 0.94 : 0.40 },
+      { key: 'Expiry Date', value: expiry ? expiry[1] : 'Not detected', confidence: expiry ? 0.96 : 0.40 },
+      { key: 'State', value: state ? state[1] : 'Not detected', confidence: state ? 0.97 : 0.40 },
+    ];
+    if (expiry) expiryDate = expiry[1];
+    detectedName = (name && given) ? given[1] + ' ' + name[1] : null;
+
+  } else if (text.includes('BIRTH') || text.includes('CERTIFICATE OF LIVE') || lower.includes('birth')) {
+    type = 'Birth Certificate';
+    category = 'identity';
+    const certNum = text.match(/(?:CERTIFICATE|CERT)[\s#.:NO]*(\d{4}[\-]?[A-Z]*[\-]?\d+)/i) || text.match(/\b(\d{4}-[A-Z]{2}-\d+)\b/);
+    const name = text.match(/(?:CHILD|NAME)[:\s]*([A-Z]+\s+[A-Z]+)/);
+    const dob = text.match(/(?:DATE OF BIRTH|BIRTH)[:\s]*([\w]+\s+\d{1,2},?\s+\d{4}|\d{2}[\/-]\d{2}[\/-]\d{4})/i);
+    const place = text.match(/(?:PLACE|CITY)[:\s]*([A-Z\s,]+(?:CALIFORNIA|CA|TEXAS|TX|NEW YORK|NY))/i);
+
+    fields = [
+      { key: 'Certificate Number', value: certNum ? certNum[1] : 'Not detected', confidence: certNum ? 0.94 : 0.40 },
+      { key: 'Full Name', value: name ? name[1] : 'Not detected', confidence: name ? 0.95 : 0.40 },
+      { key: 'Date of Birth', value: dob ? dob[1] : 'Not detected', confidence: dob ? 0.96 : 0.40 },
+      { key: 'Place of Birth', value: place ? place[1].trim() : 'Not detected', confidence: place ? 0.93 : 0.40 },
+    ];
+    expiryDate = null;
+    detectedName = name ? name[1] : null;
+
+  } else if (text.includes('INSURANCE') || text.includes('POLICY') || lower.includes('insurance')) {
+    type = 'Insurance Policy';
+    category = 'insurance';
+    const policyNum = text.match(/(?:POLICY)[\s#.:NO]*([A-Z0-9\-]+)/i);
+    const expiry = text.match(/(?:EXP|EXPIR|VALID UNTIL)[A-Z\s]*[:.]?\s*(\d{2}[\/-]\d{2}[\/-]\d{4})/i);
+    fields = [
+      { key: 'Policy Number', value: policyNum ? policyNum[1] : 'Not detected', confidence: policyNum ? 0.93 : 0.40 },
+      { key: 'Expiry Date', value: expiry ? expiry[1] : 'Not detected', confidence: expiry ? 0.95 : 0.40 },
+      { key: 'Type', value: text.includes('LIFE') ? 'Life Insurance' : text.includes('HOME') ? 'Home Insurance' : text.includes('AUTO') ? 'Auto Insurance' : 'Insurance', confidence: 0.85 },
+    ];
+    if (expiry) expiryDate = expiry[1];
+
+  } else if (text.includes('1099') || text.includes('W-2') || text.includes('TAX RETURN') || lower.includes('tax') || lower.includes('1099') || lower.includes('w2')) {
+    type = 'Tax Document';
+    category = 'tax';
+    const yearMatch = text.match(/20\d{2}/);
+    fields = [
+      { key: 'Document Type', value: text.includes('1099') ? '1099' : text.includes('W-2') ? 'W-2' : 'Tax Document', confidence: 0.92 },
+      { key: 'Tax Year', value: yearMatch ? yearMatch[0] : 'Not detected', confidence: yearMatch ? 0.90 : 0.40 },
+    ];
+
+  } else {
+    type = 'Document';
+    category = 'other';
+    const anyDate = text.match(/(\d{2}[\/-]\d{2}[\/-]\d{4})/);
+    fields = [
+      { key: 'Document Type', value: 'Unclassified', confidence: 0.50 },
+      { key: 'Date Found', value: anyDate ? anyDate[1] : 'None', confidence: anyDate ? 0.80 : 0.30 },
+    ];
+  }
+
+  const avgConfidence = fields.length > 0 ? fields.reduce((sum, f) => sum + f.confidence, 0) / fields.length : 0.50;
+
+  return { type, fields, expiryDate, detectedName, category, confidence: Math.round(avgConfidence * 100) / 100 };
 }
 
 function simulateAIAnalysis(filename, category, fullPath) {
