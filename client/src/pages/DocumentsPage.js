@@ -86,19 +86,30 @@ export default function DocumentsPage({ navigate }) {
   const handleFile = (file) => {
     if (!file) return;
     setPendingFile(file);
-    setUploadForm(f => ({ ...f, name: file.name.replace(/\.[^.]+$/, ''), category: guessCat(file.name) }));
+    const isScanned = file.name.startsWith('scan_');
+
+    // Filename hint only — not final. Real detection happens via backend OCR.
+    const hintCategory = isScanned ? 'other' : guessCat(file.name);
     const fname = file.name.toLowerCase().replace(/\.[^.]+$/, '');
-    const matchedMember = members.find(m => fname.includes(m.first_name.toLowerCase()));
-    if (matchedMember) {
-      setSelectedMember(matchedMember.id);
-      setFileDetectedName('');
-    } else {
-      setSelectedMember('');
-      // Extract possible name from filename (remove common doc keywords)
+    const hintMember = isScanned ? null : members.find(m => fname.includes(m.first_name.toLowerCase()));
+
+    setUploadForm(f => ({
+      ...f,
+      name: isScanned ? 'Scanned Document' : file.name.replace(/\.[^.]+$/, ''),
+      category: hintCategory,
+      notes: '',
+    }));
+    setSelectedMember(hintMember ? hintMember.id : '');
+
+    // Extract non-matching name hint from filename (uploads only)
+    if (!isScanned && !hintMember) {
       const cleaned = fname.replace(/passport|license|driver|birth|certificate|insurance|tax|property|deed|medical|medicare|ssn|social|1099|w2|_/gi, ' ').trim();
       const words = cleaned.split(/\s+/).filter(w => w.length > 2);
       setFileDetectedName(words.length > 0 ? words.join(' ') : '');
+    } else {
+      setFileDetectedName('');
     }
+
     setUploadStep(2);
     setShowUpload(true);
   };
@@ -119,7 +130,11 @@ export default function DocumentsPage({ navigate }) {
       setTimeout(() => setToast(''), 4000);
       setUploadedDoc(resp.data);
       setUploadStep(4);
-      if (resp.data.aiSummary?.category && resp.data.aiSummary.category !== 'other') {
+      // Auto-update from backend AI detection
+      if (resp.data.autoMatchedId && !selectedMember) {
+        setSelectedMember(resp.data.autoMatchedId);
+      }
+      if (resp.data.aiSummary?.category && resp.data.aiSummary.category !== 'other' && uploadForm.category === 'other') {
         setUploadForm(f => ({ ...f, category: resp.data.aiSummary.category }));
       }
       loadDocs();
@@ -512,6 +527,11 @@ export default function DocumentsPage({ navigate }) {
                   </div>
                 </div>
               )}
+              {!selectedMember && !fileDetectedName && (
+                <div style={{ marginTop: 12, padding: '10px 14px', background: '#e0f2fe', border: '1px solid #0ea5e9', borderRadius: 8, fontSize: 12, color: '#0c4a6e' }}>
+                  Select the family member this document belongs to. AI will verify the owner after upload.
+                </div>
+              )}
               {(() => {
                 const detectedMember = detectNameInFile(pendingFile?.name || '', members);
                 if (detectedMember && selectedMember && detectedMember.id !== selectedMember) {
@@ -556,15 +576,47 @@ export default function DocumentsPage({ navigate }) {
               <div>
                 <div style={{ color: 'var(--green)', fontWeight: 700, fontSize: 16, marginBottom: 10 }}>Document Uploaded Successfully!</div>
 
-                {uploadedDoc.autoMatchedMember && (
-                  <div style={{ background: 'var(--green-bg)', border: '1px solid var(--green-border)', borderRadius: 8, padding: '8px 12px', marginBottom: 10, color: 'var(--green)', fontSize: 12, fontWeight: 600 }}>
-                    ✓ Auto-matched to {uploadedDoc.autoMatchedMember}
-                  </div>
-                )}
-                {uploadedDoc.nameWarning && (
-                  <div style={{ background: 'var(--amber-bg)', border: '1px solid var(--amber-border)', borderRadius: 8, padding: '8px 12px', marginBottom: 10, color: 'var(--amber)', fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-                    <span>⚠ {uploadedDoc.nameWarning}</span>
-                    <button className="btn btn-xs btn-outline" style={{ flexShrink: 0 }} onClick={() => { closeUploadFlow(); navigate && navigate('add-member'); }}>Add member</button>
+                {/* AI Detection Results */}
+                {uploadedDoc?.aiSummary && (
+                  <div style={{ marginBottom: 14 }}>
+                    {uploadedDoc.aiSummary.type && uploadedDoc.aiSummary.type !== 'Document' && uploadedDoc.aiSummary.type !== 'Unknown Document' && (
+                      <div style={{ padding: '10px 14px', background: '#d1fae5', border: '1px solid #10b981', borderRadius: 8, fontSize: 13, color: '#065f46', marginBottom: 8 }}>
+                        <strong>🤖 AI Detected:</strong> {uploadedDoc.aiSummary.type}
+                        {uploadedDoc.aiSummary.confidence && <span style={{ marginLeft: 8, fontSize: 11, opacity: 0.8 }}>({Math.round(uploadedDoc.aiSummary.confidence * 100)}% confidence)</span>}
+                      </div>
+                    )}
+                    {uploadedDoc.autoMatchedMember && (
+                      <div style={{ padding: '8px 14px', background: '#d1fae5', border: '1px solid #10b981', borderRadius: 8, fontSize: 12, color: '#065f46', marginBottom: 8 }}>
+                        ✅ Auto-matched owner: <strong>{uploadedDoc.autoMatchedMember}</strong>
+                      </div>
+                    )}
+                    {uploadedDoc.nameWarning && (
+                      <div style={{ padding: '8px 14px', background: '#fef3c7', border: '1px solid #f59e0b', borderRadius: 8, fontSize: 12, color: '#92400e', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span>⚠️ {uploadedDoc.nameWarning}</span>
+                        <button className="btn btn-xs btn-outline" style={{ flexShrink: 0 }} onClick={() => { closeUploadFlow(); navigate && navigate('add-member'); }}>Add Member</button>
+                      </div>
+                    )}
+                    {uploadedDoc.aiSummary.fields && uploadedDoc.aiSummary.fields.length > 0 && (
+                      <div style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
+                        <div style={{ padding: '8px 12px', background: 'var(--surface2)', fontSize: 11, fontWeight: 700, color: 'var(--txt3)', textTransform: 'uppercase', letterSpacing: '.04em' }}>Extracted Fields</div>
+                        {uploadedDoc.aiSummary.fields.map((f, i) => (
+                          <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderTop: '1px solid var(--border)', fontSize: 12 }}>
+                            <span style={{ color: 'var(--txt3)', minWidth: 100 }}>{f.key}</span>
+                            <span style={{ fontWeight: 600, color: 'var(--txt)', flex: 1, textAlign: 'right' }}>{f.value}</span>
+                            <span style={{
+                              marginLeft: 8, padding: '1px 6px', borderRadius: 4, fontSize: 10, fontWeight: 700,
+                              background: f.confidence >= 0.9 ? '#d1fae5' : f.confidence >= 0.7 ? '#fef3c7' : '#fee2e2',
+                              color: f.confidence >= 0.9 ? '#065f46' : f.confidence >= 0.7 ? '#92400e' : '#991b1b'
+                            }}>{Math.round(f.confidence * 100)}%</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {uploadedDoc.ocrText && (
+                      <div style={{ marginTop: 8, fontSize: 10, color: 'var(--txt4)' }}>
+                        OCR extracted {uploadedDoc.ocrText.length} characters
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -577,19 +629,7 @@ export default function DocumentsPage({ navigate }) {
                   </div>
                 )}
 
-                <div style={{ fontSize: 11, color: 'var(--txt4)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 6 }}>Detected: {ai.type || 'Document'}</div>
-
-                {aiFields.length > 0 ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 10 }}>
-                    {aiFields.map((f, i) => (
-                      <div key={i} style={{ display: 'grid', gridTemplateColumns: '110px 1fr auto', gap: 8, alignItems: 'center' }}>
-                        <span style={{ fontSize: 11, color: 'var(--txt3)', fontWeight: 600 }}>{f.key}</span>
-                        <input type="text" defaultValue={f.value} style={{ height: 28, fontSize: 12, border: '1px solid var(--border)', borderRadius: 4, padding: '0 6px', width: '100%', background: 'var(--surface)', color: 'var(--txt)' }} />
-                        {confBadge(f.confidence)}
-                      </div>
-                    ))}
-                  </div>
-                ) : (
+                {aiFields.length === 0 && legacyPairs.length > 0 && (
                   <div className="ai-result-box">
                     {legacyPairs.map(([k, v]) => <div key={k} className="ai-field"><strong>{k}:</strong> {String(v)}</div>)}
                   </div>
