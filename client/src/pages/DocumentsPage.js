@@ -19,6 +19,12 @@ const CATS = [
 
 function statusColor(s) { return { valid:'green', expiring:'amber', expired:'red', review:'purple' }[s] || 'gray'; }
 function statusLabel(s) { return { valid:'Valid', expiring:'Expiring', expired:'Expired', review:'Review' }[s] || s; }
+function detectNameInFile(filename, members) {
+  const fn = (filename || '').toLowerCase();
+  const matched = members.find(m => fn.includes(m.first_name.toLowerCase()));
+  return matched || null;
+}
+
 function guessCat(name) {
   const n = name.toLowerCase();
   if (n.includes('passport') || n.includes('ssn') || n.includes('license') || n.includes('driver')) return 'identity';
@@ -44,6 +50,7 @@ export default function DocumentsPage({ navigate }) {
   const [uploadForm, setUploadForm] = useState({ name: '', category: 'other', notes: '' });
   const [members, setMembers] = useState([]);
   const [selectedMember, setSelectedMember] = useState('');
+  const [fileDetectedName, setFileDetectedName] = useState('');
   const [uploadError, setUploadError] = useState('');
   const [pendingFile, setPendingFile] = useState(null);
   const [showFilter, setShowFilter] = useState(false);
@@ -76,11 +83,17 @@ export default function DocumentsPage({ navigate }) {
     if (!file) return;
     setPendingFile(file);
     setUploadForm(f => ({ ...f, name: file.name.replace(/\.[^.]+$/, ''), category: guessCat(file.name) }));
-    // Auto-detect member from filename
-    const fname = file.name.toLowerCase();
+    const fname = file.name.toLowerCase().replace(/\.[^.]+$/, '');
     const matchedMember = members.find(m => fname.includes(m.first_name.toLowerCase()));
     if (matchedMember) {
       setSelectedMember(matchedMember.id);
+      setFileDetectedName('');
+    } else {
+      setSelectedMember('');
+      // Extract possible name from filename (remove common doc keywords)
+      const cleaned = fname.replace(/passport|license|driver|birth|certificate|insurance|tax|property|deed|medical|medicare|ssn|social|1099|w2|_/gi, ' ').trim();
+      const words = cleaned.split(/\s+/).filter(w => w.length > 2);
+      setFileDetectedName(words.length > 0 ? words.join(' ') : '');
     }
     setUploadStep(2);
     setShowUpload(true);
@@ -154,6 +167,8 @@ export default function DocumentsPage({ navigate }) {
     setPendingFile(null);
     setUploadedDoc(null);
     setUploadError('');
+    setSelectedMember('');
+    setFileDetectedName('');
     setUploadStep(1);
   };
 
@@ -413,7 +428,32 @@ export default function DocumentsPage({ navigate }) {
                     {m.first_name} {m.last_name}
                   </button>
                 ))}
+                <button className="btn btn-outline" style={{ justifyContent: 'flex-start', borderStyle: 'dashed', color: 'var(--accent)' }} onClick={() => { closeUploadFlow(); navigate && navigate('add-member'); }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5v14M5 12h14"/></svg>
+                  + Add New Member
+                </button>
               </div>
+              {fileDetectedName && !selectedMember && (
+                <div style={{ marginTop: 12, padding: '12px 14px', background: '#fef3c7', border: '1px solid #f59e0b', borderRadius: 8, fontSize: 13, color: '#92400e', display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ fontSize: 18 }}>⚠️</span>
+                  <div>
+                    <div style={{ fontWeight: 600, marginBottom: 2 }}>"{fileDetectedName}" doesn't match any family member</div>
+                    <div style={{ fontSize: 11, opacity: 0.8 }}>Select an existing member above or add a new one</div>
+                  </div>
+                </div>
+              )}
+              {(() => {
+                const detectedMember = detectNameInFile(pendingFile?.name || '', members);
+                if (detectedMember && selectedMember && detectedMember.id !== selectedMember) {
+                  const selectedName = members.find(m => m.id === selectedMember);
+                  return (
+                    <div style={{ marginTop: 12, padding: '10px 14px', background: '#fef3c7', border: '1px solid #f59e0b', borderRadius: 8, fontSize: 12, color: '#92400e' }}>
+                      <strong>⚠ Name mismatch:</strong> Document filename contains "<strong>{detectedMember.first_name} {detectedMember.last_name}</strong>" but you selected "<strong>{selectedName?.first_name} {selectedName?.last_name}</strong>". Are you sure?
+                    </div>
+                  );
+                }
+                return null;
+              })()}
             </div>
           )}
 
