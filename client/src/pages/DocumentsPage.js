@@ -21,13 +21,13 @@ function statusColor(s) { return { valid:'green', expiring:'amber', expired:'red
 function statusLabel(s) { return { valid:'Valid', expiring:'Expiring', expired:'Expired', review:'Review' }[s] || s; }
 function guessCat(name) {
   const n = name.toLowerCase();
-  if (n.includes('passport') || n.includes('ssn') || n.includes('license') || n.includes('driver') || n.includes('birth')) return 'identity';
-  if (n.includes('insurance') || n.includes('policy')) return 'insurance';
-  if (n.includes('tax') || n.includes('w-2') || n.includes('w2') || n.includes('1099') || n.includes('1040')) return 'tax';
-  if (n.includes('deed') || n.includes('property') || n.includes('mortgage')) return 'property';
-  if (n.includes('marriage') || n.includes('will') || n.includes('trust') || n.includes('power_of_attorney')) return 'legal';
-  if (n.includes('medical') || n.includes('health') || n.includes('medicare') || n.includes('prescription')) return 'medical';
-  if (n.includes('diploma') || n.includes('school') || n.includes('transcript') || n.includes('degree')) return 'education';
+  if (n.includes('passport') || n.includes('ssn') || n.includes('license') || n.includes('driver')) return 'identity';
+  if (n.includes('birth_cert') || n.includes('birth certificate')) return 'identity';
+  if (n.includes('insurance') || n.includes('policy_')) return 'insurance';
+  if (n.includes('tax_') || n.includes('w-2') || n.includes('w2_') || n.includes('1099') || n.includes('1040')) return 'tax';
+  if (n.includes('deed') || n.includes('property_') || n.includes('mortgage')) return 'property';
+  if (n.includes('medical_') || n.includes('health_') || n.includes('medicare') || n.includes('prescription')) return 'medical';
+  if (n.includes('diploma') || n.includes('transcript')) return 'education';
   return 'other';
 }
 

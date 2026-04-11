@@ -161,10 +161,8 @@ router.post('/upload', auth, upload.single('file'), async (req, res) => {
     let validCategory = VALID_CATEGORIES.includes(category) ? category : 'other';
     const lowerName = file.originalname.toLowerCase();
     if (validCategory === 'other') {
-      if (lowerName.includes('passport') || lowerName.includes('license') || lowerName.includes('dl ')) {
+      if (lowerName.includes('passport') || lowerName.includes('license') || lowerName.includes('dl ') || lowerName.includes('birth_cert') || lowerName.includes('birth certificate')) {
         validCategory = 'identity';
-      } else if (lowerName.includes('birth') || lowerName.includes('certificate')) {
-        validCategory = 'legal';
       }
     }
 
