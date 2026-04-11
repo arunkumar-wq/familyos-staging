@@ -148,6 +148,89 @@ router.get('/:id', auth, (req, res) => {
   }
 });
 
+// POST /api/documents/analyze — Run OCR without saving document
+router.post('/analyze', auth, upload.single('file'), async (req, res) => {
+  try {
+    const file = req.file;
+    if (!file) return res.status(400).json({ error: 'No file' });
+
+    const filePath = path.join(__dirname, '..', '..', 'uploads', file.filename);
+
+    // Run OCR on images only
+    let ocrResult = { text: '', confidence: 0 };
+    const ocrTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    if (ocrTypes.includes(file.mimetype)) {
+      try {
+        const worker = await Tesseract.createWorker('eng');
+        const { data } = await worker.recognize(filePath);
+        await worker.terminate();
+        ocrResult = { text: data.text || '', confidence: data.confidence || 0 };
+      } catch (e) {
+        console.error('OCR error:', e.message);
+      }
+    }
+
+    // Parse fields from OCR text + filename
+    const parsed = parseDocumentFields(ocrResult.text, file.originalname);
+
+    // Match member from OCR text
+    const db = getDb();
+    const familyMembers = db.prepare(`SELECT id, first_name, last_name FROM users WHERE family_id=?`).all(req.user.family_id);
+
+    let matchedMember = null;
+    let nameWarning = null;
+
+    // Try OCR-detected name first
+    if (parsed.detectedName) {
+      matchedMember = familyMembers.find(m =>
+        parsed.detectedName.toUpperCase().includes(m.first_name.toUpperCase()) ||
+        parsed.detectedName.toUpperCase().includes(m.last_name.toUpperCase())
+      );
+    }
+
+    // Fallback: search full OCR text for any family member name
+    if (!matchedMember && ocrResult.text) {
+      const ocrUpper = ocrResult.text.toUpperCase();
+      matchedMember = familyMembers.find(m =>
+        ocrUpper.includes(m.first_name.toUpperCase()) && ocrUpper.includes(m.last_name.toUpperCase())
+      );
+    }
+
+    // Fallback: try filename
+    if (!matchedMember) {
+      const fname = file.originalname.toLowerCase();
+      matchedMember = familyMembers.find(m => fname.includes(m.first_name.toLowerCase()));
+    }
+
+    if (!matchedMember && parsed.detectedName) {
+      nameWarning = parsed.detectedName + " doesn't match any family member";
+    }
+
+    // DELETE temp file after analysis
+    try { fs.unlinkSync(filePath); } catch (e) { console.error('Temp file cleanup error:', e.message); }
+
+    res.json({
+      type: parsed.type,
+      category: parsed.category,
+      confidence: parsed.confidence,
+      fields: parsed.fields,
+      expiryDate: parsed.expiryDate,
+      detectedName: parsed.detectedName,
+      matchedMemberId: matchedMember ? matchedMember.id : null,
+      matchedMemberName: matchedMember ? matchedMember.first_name + ' ' + matchedMember.last_name : null,
+      nameWarning: nameWarning,
+      ocrTextLength: ocrResult.text.length,
+      ocrConfidence: ocrResult.confidence,
+    });
+  } catch (err) {
+    console.error('Analyze error:', err.message);
+    if (req.file) {
+      try { fs.unlinkSync(path.join(__dirname, '..', '..', 'uploads', req.file.filename)); } catch (e) {}
+    }
+    res.status(500).json({ error: 'Analysis failed' });
+  }
+});
+
 // POST /api/documents/upload
 router.post('/upload', auth, upload.single('file'), async (req, res) => {
   try {

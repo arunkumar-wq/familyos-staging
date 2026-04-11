@@ -63,6 +63,8 @@ export default function DocumentsPage({ navigate }) {
   const [showCamera, setShowCamera] = useState(false);
   const [capturedImage, setCapturedImage] = useState(null);
   const [cameraStream, setCameraStream] = useState(null);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [aiResults, setAiResults] = useState(null);
   const fileInputRef = useRef();
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
@@ -83,35 +85,52 @@ export default function DocumentsPage({ navigate }) {
     } catch {} finally { setLoading(false); }
   };
 
-  const handleFile = (file) => {
+  const handleFile = async (file) => {
     if (!file) return;
     setPendingFile(file);
-    const isScanned = file.name.startsWith('scan_');
-
-    // Filename hint only — not final. Real detection happens via backend OCR.
-    const hintCategory = isScanned ? 'other' : guessCat(file.name);
-    const fname = file.name.toLowerCase().replace(/\.[^.]+$/, '');
-    const hintMember = isScanned ? null : members.find(m => fname.includes(m.first_name.toLowerCase()));
-
+    setShowUpload(true);
+    setUploadStep(0);
+    setAnalyzing(true);
+    setAiResults(null);
+    setFileDetectedName('');
+    setSelectedMember('');
     setUploadForm(f => ({
       ...f,
-      name: isScanned ? 'Scanned Document' : file.name.replace(/\.[^.]+$/, ''),
-      category: hintCategory,
+      name: file.name.startsWith('scan_') ? 'Scanned Document' : file.name.replace(/\.[^.]+$/, ''),
+      category: 'other',
       notes: '',
     }));
-    setSelectedMember(hintMember ? hintMember.id : '');
 
-    // Extract non-matching name hint from filename (uploads only)
-    if (!isScanned && !hintMember) {
-      const cleaned = fname.replace(/passport|license|driver|birth|certificate|insurance|tax|property|deed|medical|medicare|ssn|social|1099|w2|_/gi, ' ').trim();
-      const words = cleaned.split(/\s+/).filter(w => w.length > 2);
-      setFileDetectedName(words.length > 0 ? words.join(' ') : '');
-    } else {
-      setFileDetectedName('');
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const resp = await api.post('/documents/analyze', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+      const r = resp.data;
+      setAiResults(r);
+
+      if (r.matchedMemberId) setSelectedMember(r.matchedMemberId);
+      if (r.category && r.category !== 'other') {
+        setUploadForm(f => ({ ...f, category: r.category }));
+      } else {
+        const cat = guessCat(file.name);
+        if (cat !== 'other') setUploadForm(f => ({ ...f, category: cat }));
+      }
+      if (r.nameWarning) setFileDetectedName(r.detectedName || '');
+      if (r.type && r.type !== 'Document' && r.type !== 'Unknown Document') {
+        const mName = r.matchedMemberName || '';
+        setUploadForm(f => ({ ...f, name: r.type + (mName ? ' — ' + mName : '') }));
+      }
+    } catch (e) {
+      console.error('AI analysis failed, using filename fallback:', e);
+      const fname = file.name.toLowerCase().replace(/\.[^.]+$/, '');
+      const match = members.find(m => fname.includes(m.first_name.toLowerCase()));
+      if (match) setSelectedMember(match.id);
+      const cat = guessCat(file.name);
+      if (cat !== 'other') setUploadForm(f => ({ ...f, category: cat }));
     }
 
+    setAnalyzing(false);
     setUploadStep(2);
-    setShowUpload(true);
   };
 
   const submitUpload = async () => {
@@ -251,6 +270,8 @@ export default function DocumentsPage({ navigate }) {
     setUploadError('');
     setSelectedMember('');
     setFileDetectedName('');
+    setAiResults(null);
+    setAnalyzing(false);
     setUploadStep(1);
   };
 
@@ -479,15 +500,25 @@ export default function DocumentsPage({ navigate }) {
           footer={(
             <>
               {uploadStep > 1 && uploadStep < 4 && <button className="btn btn-outline" onClick={() => setUploadStep(s => s - 1)}>Back</button>}
-              {uploadStep < 3 && <button className="btn btn-outline" onClick={closeUploadFlow}>Cancel</button>}
+              {uploadStep !== 0 && uploadStep < 3 && <button className="btn btn-outline" onClick={closeUploadFlow}>Cancel</button>}
               {uploadStep === 2 && <button className="btn btn-teal" onClick={() => setUploadStep(3)} disabled={!selectedMember}>Next</button>}
               {uploadStep === 3 && <button className="btn btn-teal" onClick={submitUpload} disabled={uploading}>{uploading ? 'Uploading...' : 'Upload'}</button>}
               {uploadStep === 4 && <button className="btn btn-teal" onClick={closeUploadFlow}>Done</button>}
             </>
           )}
         >
-          <div style={{ fontSize: 12, color: 'var(--txt3)', marginBottom: 12, fontWeight: 600 }}>Step {uploadStep} of 4</div>
+          {uploadStep > 0 && <div style={{ fontSize: 12, color: 'var(--txt3)', marginBottom: 12, fontWeight: 600 }}>Step {uploadStep} of 4</div>}
           {uploadError && <div role="alert" style={{ background: 'var(--red-bg)', border: '1px solid var(--red-border)', borderRadius: 8, padding: '10px 14px', marginBottom: 12, color: 'var(--red)', fontSize: 13 }}>{uploadError}</div>}
+
+          {uploadStep === 0 && (
+            <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+              <div style={{ width: 56, height: 56, margin: '0 auto 16px', borderRadius: '50%', background: 'linear-gradient(135deg, #0a9e9e, #3883f6)', display: 'flex', alignItems: 'center', justifyContent: 'center', animation: 'pulse 1.5s ease infinite' }}>
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+              </div>
+              <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--txt)', marginBottom: 6 }}>AI Processing...</div>
+              <div style={{ fontSize: 12, color: 'var(--txt3)' }}>Scanning document · Extracting text · Detecting fields</div>
+            </div>
+          )}
 
           {uploadStep === 1 && (
             <div className="dropzone" onClick={() => fileInputRef.current && fileInputRef.current.click()} role="button" tabIndex={0}>
@@ -499,6 +530,13 @@ export default function DocumentsPage({ navigate }) {
 
           {uploadStep === 2 && (
             <div>
+              {aiResults && aiResults.type && aiResults.type !== 'Document' && aiResults.type !== 'Unknown Document' && (
+                <div style={{ marginBottom: 12, padding: '10px 14px', background: '#d1fae5', border: '1px solid #10b981', borderRadius: 8, fontSize: 13, color: '#065f46' }}>
+                  🤖 <strong>AI Detected: {aiResults.type}</strong>
+                  {aiResults.matchedMemberName && <span> — Owner: <strong>{aiResults.matchedMemberName}</strong></span>}
+                  {typeof aiResults.confidence === 'number' && <span style={{ marginLeft: 6, fontSize: 11, opacity: 0.8 }}>({Math.round(aiResults.confidence * 100)}%)</span>}
+                </div>
+              )}
               <div className="section-label" style={{ marginBottom: 10 }}>Select Family Member</div>
               <div style={{ display: 'grid', gap: 8 }}>
                 {members.map(m => (
