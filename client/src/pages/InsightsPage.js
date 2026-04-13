@@ -13,6 +13,8 @@ export default function InsightsPage({ navigate }) {
   const [loading, setLoading] = useState(true);
   const [analyzing, setAnalyzing] = useState(false);
   const [showPrefs, setShowPrefs] = useState(false);
+  const [analysisResults, setAnalysisResults] = useState(null);
+  const [analysisProgress, setAnalysisProgress] = useState('');
   const [prefs, setPrefs] = useState({
     alertTypes: { passport: true, insurance: true, portfolio: true, tax: true, documents: true, estate: true },
     frequency: 'realtime',
@@ -55,6 +57,36 @@ export default function InsightsPage({ navigate }) {
     high: allInsights.filter(i => i.sev === 'warning'),
     medium: allInsights.filter(i => i.sev === 'info'),
     low: allInsights.filter(i => !['urgent','warning','info'].includes(i.sev)),
+  };
+
+  const runFullAnalysis = async () => {
+    setAnalyzing(true);
+    setAnalysisResults(null);
+    const steps = [
+      'Scanning documents...',
+      'Checking expiry dates...',
+      'Analyzing missing documents...',
+      'Reviewing portfolio...',
+      'Generating recommendations...',
+    ];
+    let stepIdx = 0;
+    const progressInterval = setInterval(() => {
+      if (stepIdx < steps.length) {
+        setAnalysisProgress(steps[stepIdx]);
+        stepIdx++;
+      }
+    }, 600);
+    try {
+      const resp = await api.post('/alerts/analyze');
+      setAnalysisResults(resp.data);
+      const alertsResp = await api.get('/alerts');
+      setAlerts(alertsResp.data || []);
+    } catch (e) {
+      console.error('Analysis failed:', e);
+    }
+    clearInterval(progressInterval);
+    setAnalysisProgress('');
+    setAnalyzing(false);
   };
 
   const renderSection = (label, color, badge, iconSvg, items, sevClass) => {
@@ -101,7 +133,13 @@ export default function InsightsPage({ navigate }) {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
           Preferences
         </button>
-        <button className="btn btn-teal" onClick={() => { setAnalyzing(true); api.get('/alerts').then(r => setAlerts(r.data || [])).finally(() => setAnalyzing(false)); }} disabled={analyzing}>{analyzing ? 'Analyzing...' : 'Run Analysis'}</button>
+        <button className="btn btn-teal" onClick={runFullAnalysis} disabled={analyzing}>
+          {analyzing ? (
+            <><span className="btn-spinner" /> {analysisProgress || 'Analyzing...'}</>
+          ) : (
+            <><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg> Run Analysis</>
+          )}
+        </button>
       </PageHeader>
       <div className="mini-stats-strip">
         {[
@@ -117,6 +155,46 @@ export default function InsightsPage({ navigate }) {
           </div>
         ))}
       </div>
+      {analysisResults && (
+        <div className="card" style={{ marginBottom: 16, overflow: 'hidden' }}>
+          <div style={{ padding: '12px 16px', background: 'linear-gradient(135deg, #0a9e9e, #3883f6)', color: '#fff', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: 14 }}>Analysis Complete</div>
+              <div style={{ fontSize: 11, opacity: 0.8, marginTop: 2 }}>
+                {analysisResults.summary.documentsScanned} docs scanned · {analysisResults.summary.membersAnalyzed} members · {analysisResults.summary.assetsReviewed} assets
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+              {analysisResults.summary.critical > 0 && (
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: 20, fontWeight: 800 }}>{analysisResults.summary.critical}</div>
+                  <div style={{ fontSize: 9, opacity: 0.8 }}>CRITICAL</div>
+                </div>
+              )}
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: 20, fontWeight: 800 }}>{analysisResults.summary.totalFindings}</div>
+                <div style={{ fontSize: 9, opacity: 0.8 }}>FINDINGS</div>
+              </div>
+              <button onClick={() => setAnalysisResults(null)} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff', borderRadius: '50%', width: 24, height: 24, cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>&times;</button>
+            </div>
+          </div>
+          <div style={{ maxHeight: 300, overflowY: 'auto' }}>
+            {analysisResults.results.map((r, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 16px', borderBottom: '1px solid var(--border)', cursor: 'pointer' }} onClick={() => navigate && navigate(r.action)}>
+                <div style={{
+                  width: 8, height: 8, borderRadius: '50%', flexShrink: 0, marginTop: 5,
+                  background: r.severity === 'critical' ? '#dc2626' : r.severity === 'warning' ? '#f59e0b' : r.severity === 'success' ? '#059669' : '#0a9e9e'
+                }} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--txt)' }}>{r.title}</div>
+                  <div style={{ fontSize: 11, color: 'var(--txt3)', marginTop: 2 }}>{r.body}</div>
+                </div>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#c7c7cc" strokeWidth="2" style={{ flexShrink: 0, marginTop: 4 }}><path d="M9 18l6-6-6-6"/></svg>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       {showPrefs && (
         <div className="card prefs-panel" style={{ marginBottom: 20, overflow: 'hidden' }}>
           <div style={{ padding: '14px 18px', background: 'var(--surface2)', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
