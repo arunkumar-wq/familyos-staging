@@ -223,9 +223,9 @@ button{cursor:pointer;font-family:inherit}input,select,textarea{font-family:inhe
 .cal-day.has-event{background:var(--amber-bg);color:var(--amber);font-weight:700}
 
 /* ═══ Google Calendar Style ═══ */
-.gcal-grid{display:grid;grid-template-columns:repeat(7,1fr);border:1px solid #dadce0;border-radius:8px;overflow:hidden;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.gcal-grid{display:grid;grid-template-columns:repeat(7,1fr);border:1px solid #dadce0;border-radius:8px;overflow:hidden;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.04);width:100%}
 .gcal-header{padding:10px 4px;font-size:11px;font-weight:500;text-align:center;color:#70757a;text-transform:uppercase;letter-spacing:.05em;background:#fff;border-bottom:1px solid #dadce0}
-.gcal-cell{min-height:75px;padding:4px 5px;border-right:1px solid #e8eaed;border-bottom:1px solid #e8eaed;cursor:pointer;transition:background 120ms ease;background:#fff;display:flex;flex-direction:column}
+.gcal-cell{min-height:75px;padding:4px 5px;border-right:1px solid #e8eaed;border-bottom:1px solid #e8eaed;cursor:pointer;transition:background 120ms ease;background:#fff;display:flex;flex-direction:column;overflow:hidden;width:100%;max-width:100%}
 .gcal-cell:nth-child(7n){border-right:none}
 .gcal-cell:last-child{border-bottom:none}
 .gcal-cell:hover{background:#f8f9fa}
@@ -234,8 +234,8 @@ button{cursor:pointer;font-family:inherit}input,select,textarea{font-family:inhe
 .gcal-cell.gcal-empty{background:#fafafa;min-height:50px;cursor:default}
 .gcal-date-num{font-size:12px;font-weight:400;color:#70757a;margin-bottom:4px;line-height:1}
 .gcal-today-badge{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:#1a73e8;color:#fff;font-weight:500;font-size:12px;line-height:1}
-.gcal-tasks{display:flex;flex-direction:column;gap:1px;flex:1}
-.gcal-task-bar{padding:1px 6px;border-radius:4px;font-size:11px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.5;letter-spacing:-.01em}
+.gcal-tasks{display:flex;flex-direction:column;gap:1px;flex:1;max-width:100%;overflow:hidden}
+.gcal-task-bar{padding:1px 6px;border-radius:4px;font-size:11px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.5;letter-spacing:-.01em;max-width:100%;box-sizing:border-box}
 .gcal-more{font-size:10px;font-weight:500;color:#1a73e8;padding:2px 6px;cursor:pointer;border-radius:4px}
 .gcal-more:hover{background:#e8f0fe}
 /* ═══ Selected Date Detail Panel ═══ */
