@@ -12,12 +12,24 @@ export default function InsightsPage({ navigate }) {
   const [alerts, setAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [analyzing, setAnalyzing] = useState(false);
+  const [showPrefs, setShowPrefs] = useState(false);
+  const [prefs, setPrefs] = useState({
+    alertTypes: { passport: true, insurance: true, portfolio: true, tax: true, documents: true, estate: true },
+    frequency: 'realtime',
+    memberScope: 'all',
+    selectedMembers: [],
+  });
+  const [members, setMembers] = useState([]);
 
   useEffect(() => {
     api.get('/alerts')
       .then(r => setAlerts(r.data || []))
       .catch(() => {})
       .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    api.get('/family/members').then(r => setMembers(r.data || [])).catch(() => {});
   }, []);
 
   // Build insights from real alerts + static suggestions
@@ -85,15 +97,19 @@ export default function InsightsPage({ navigate }) {
   return (
     <div className="page-inner" style={{ maxWidth:1100 }}>
       <PageHeader title="AI Insights" sub="Proactive intelligence across your vault and finances">
-        <button className="btn btn-outline" onClick={() => navigate && navigate('settings')}>Preferences</button>
+        <button className="btn btn-outline" onClick={() => setShowPrefs(!showPrefs)}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+          Preferences
+        </button>
         <button className="btn btn-teal" onClick={() => { setAnalyzing(true); api.get('/alerts').then(r => setAlerts(r.data || [])).finally(() => setAnalyzing(false)); }} disabled={analyzing}>{analyzing ? 'Analyzing...' : 'Run Analysis'}</button>
       </PageHeader>
       <div className="mini-stats-strip">
         {[
-          { label: 'Urgent', value: urgentAlerts.length, color: 'var(--red)' },
-          { label: 'Warnings', value: warningAlerts.length, color: 'var(--amber)' },
-          { label: 'Suggestions', value: allInsights.length, color: 'var(--accent)' },
-          { label: 'Total', value: alerts.length, color: 'var(--purple)' },
+          { label: 'Urgent', value: severityGroups.urgent.length, color: '#dc2626' },
+          { label: 'High', value: severityGroups.high.length, color: '#f59e0b' },
+          { label: 'Medium', value: severityGroups.medium.length, color: '#0a9e9e' },
+          { label: 'Low', value: severityGroups.low.length, color: '#059669' },
+          { label: 'Total', value: allInsights.length, color: 'var(--purple)' },
         ].map(s => (
           <div key={s.label} className="mini-stat">
             <span className="mini-stat-value" style={{color:s.color}}>{s.value}</span>
@@ -101,6 +117,96 @@ export default function InsightsPage({ navigate }) {
           </div>
         ))}
       </div>
+      {showPrefs && (
+        <div className="card prefs-panel" style={{ marginBottom: 20, overflow: 'hidden' }}>
+          <div style={{ padding: '14px 18px', background: 'var(--surface2)', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--txt)' }}>Alert Preferences</span>
+            <button onClick={() => setShowPrefs(false)} style={{ background: 'none', border: 'none', fontSize: 20, color: 'var(--txt3)', cursor: 'pointer', lineHeight: 1 }}>&times;</button>
+          </div>
+          <div style={{ padding: 18, display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 20 }}>
+
+            {/* Column 1: Alert Types */}
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--txt3)', textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 12 }}>Alert Types</div>
+              {[
+                { key: 'passport', label: 'Passport & ID Expiry', icon: '🪪' },
+                { key: 'insurance', label: 'Insurance Reminders', icon: '🛡' },
+                { key: 'portfolio', label: 'Portfolio Alerts', icon: '📈' },
+                { key: 'tax', label: 'Tax Deadlines', icon: '💰' },
+                { key: 'documents', label: 'Missing Documents', icon: '📄' },
+                { key: 'estate', label: 'Estate Planning', icon: '⚖️' },
+              ].map(t => (
+                <label key={t.key} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', cursor: 'pointer', borderBottom: '1px solid var(--border)', fontSize: 13 }}>
+                  <input type="checkbox" checked={prefs.alertTypes[t.key]} onChange={() => setPrefs(p => ({ ...p, alertTypes: { ...p.alertTypes, [t.key]: !p.alertTypes[t.key] } }))}
+                    style={{ width: 16, height: 16, accentColor: '#0a9e9e', cursor: 'pointer' }} />
+                  <span>{t.icon}</span>
+                  <span style={{ color: 'var(--txt)' }}>{t.label}</span>
+                </label>
+              ))}
+            </div>
+
+            {/* Column 2: Notification Frequency */}
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--txt3)', textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 12 }}>Notification Frequency</div>
+              {[
+                { key: 'realtime', label: 'Real-time', desc: 'Instant alerts for urgent items' },
+                { key: 'daily', label: 'Daily Digest', desc: 'Summary every morning at 8 AM' },
+                { key: 'weekly', label: 'Weekly Summary', desc: 'Every Monday morning' },
+                { key: 'monthly', label: 'Monthly Report', desc: 'First of every month' },
+              ].map(f => (
+                <label key={f.key} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 0', cursor: 'pointer', borderBottom: '1px solid var(--border)' }}>
+                  <input type="radio" name="frequency" checked={prefs.frequency === f.key} onChange={() => setPrefs(p => ({ ...p, frequency: f.key }))}
+                    style={{ marginTop: 3, accentColor: '#0a9e9e', cursor: 'pointer' }} />
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--txt)' }}>{f.label}</div>
+                    <div style={{ fontSize: 11, color: 'var(--txt3)', marginTop: 1 }}>{f.desc}</div>
+                  </div>
+                </label>
+              ))}
+            </div>
+
+            {/* Column 3: Family Member Scope */}
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--txt3)', textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 12 }}>Family Member Scope</div>
+              {[
+                { key: 'all', label: 'All Members' },
+                { key: 'selected', label: 'Selected Members Only' },
+              ].map(s => (
+                <label key={s.key} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', cursor: 'pointer', fontSize: 13 }}>
+                  <input type="radio" name="scope" checked={prefs.memberScope === s.key} onChange={() => setPrefs(p => ({ ...p, memberScope: s.key }))}
+                    style={{ accentColor: '#0a9e9e', cursor: 'pointer' }} />
+                  <span style={{ color: 'var(--txt)' }}>{s.label}</span>
+                </label>
+              ))}
+
+              {prefs.memberScope === 'selected' && (
+                <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {members.map(m => (
+                    <label key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 8px', borderRadius: 8, cursor: 'pointer', background: prefs.selectedMembers.includes(m.id) ? '#e0f5f5' : 'transparent', border: '1px solid ' + (prefs.selectedMembers.includes(m.id) ? '#0a9e9e' : 'var(--border)'), transition: 'all 150ms' }}>
+                      <input type="checkbox" checked={prefs.selectedMembers.includes(m.id)}
+                        onChange={() => setPrefs(p => ({
+                          ...p,
+                          selectedMembers: p.selectedMembers.includes(m.id)
+                            ? p.selectedMembers.filter(id => id !== m.id)
+                            : [...p.selectedMembers, m.id]
+                        }))}
+                        style={{ accentColor: '#0a9e9e', cursor: 'pointer' }} />
+                      {m.avatar_url && <img src={m.avatar_url} alt="" style={{ width: 24, height: 24, borderRadius: '50%', objectFit: 'cover' }} />}
+                      <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--txt)' }}>{m.first_name} {m.last_name}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+
+              {/* Save button */}
+              <div style={{ marginTop: 20, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
+                <button className="btn btn-teal btn-sm" style={{ width: '100%' }} onClick={() => { setShowPrefs(false); }}>Save Preferences</button>
+                <div style={{ fontSize: 10, color: 'var(--txt4)', textAlign: 'center', marginTop: 6 }}>Settings are saved locally for this session</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       {loading ? (
         <div style={{ padding: 40, textAlign: 'center', color: 'var(--txt3)' }}>Loading insights...</div>
       ) : allInsights.length === 0 ? (

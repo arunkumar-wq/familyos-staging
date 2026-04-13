@@ -463,6 +463,7 @@ button{cursor:pointer;font-family:inherit}input,select,textarea{font-family:inhe
   /* 3. Insights: single column on mobile */
   .insights-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
   .insights-2col{grid-template-columns:1fr 1fr;gap:10px}
+  .prefs-panel > div:last-child{grid-template-columns:1fr !important;gap:16px !important}
   .insight-card-inner{padding:10px 12px}
   .insight-icon-sm{width:24px;height:24px;font-size:11px}
   .insight-card-title{font-size:12px;margin-bottom:2px}
