@@ -293,7 +293,9 @@ router.post('/upload', auth, upload.single('file'), async (req, res) => {
     let autoMatchedId = null;
     let nameWarning = null;
 
-    if (parsed.detectedName) {
+    // Only do name matching if user didn't already select a member
+    // (If ownerId was provided, user already confirmed the correct member in Step 2)
+    if (parsed.detectedName && !ownerId) {
       const members = db.prepare(`SELECT id, first_name, last_name FROM users WHERE family_id=?`).all(req.user.family_id);
       const match = members.find(m =>
         parsed.detectedName.toUpperCase().includes(m.first_name.toUpperCase()) ||
@@ -302,11 +304,18 @@ router.post('/upload', auth, upload.single('file'), async (req, res) => {
       if (match) {
         autoMatchedMember = match.first_name + ' ' + match.last_name;
         autoMatchedId = match.id;
-        if (!ownerId || ownerId === req.user.id) {
-          resolvedOwnerId = match.id;
-        }
       } else {
         nameWarning = "Name '" + parsed.detectedName + "' doesn't match any family member";
+      }
+    }
+
+    // If user selected a member, use their choice — no warning needed
+    if (ownerId) {
+      const selectedMember = db.prepare(`SELECT first_name, last_name FROM users WHERE id=? AND family_id=?`).get(ownerId, req.user.family_id);
+      if (selectedMember) {
+        autoMatchedMember = selectedMember.first_name + ' ' + selectedMember.last_name;
+        autoMatchedId = ownerId;
+        nameWarning = null;
       }
     }
 
@@ -629,6 +638,14 @@ function parseDocumentFields(ocrText, filename) {
   let detectedName = null;
   let category = 'other';
 
+  // Filter out garbage OCR text that isn't a real name
+  const isValidName = (name) => {
+    if (!name) return false;
+    if (name.length < 3) return false;
+    const garbage = ['PHOTO', 'SIGNATURE', 'BARCODE', 'SPECIMEN', 'SAMPLE', 'VOID', 'COPY', 'SCAN'];
+    return !garbage.some(g => name.toUpperCase().includes(g));
+  };
+
   // Fuzzy keyword match — handles OCR noise like "PASSP ORT", "PASS PORT", "P4SSPORT"
   const fuzzyMatch = (t, keywords) => {
     const noSpace = t.replace(/\s/g, '');
@@ -769,6 +786,8 @@ function parseDocumentFields(ocrText, filename) {
       { key: 'Date Found', value: anyDate ? anyDate[1] : 'None', confidence: anyDate ? 0.80 : 0.30 },
     ];
   }
+
+  if (!isValidName(detectedName)) detectedName = null;
 
   const avgConfidence = fields.length > 0 ? fields.reduce((sum, f) => sum + f.confidence, 0) / fields.length : 0.50;
 
