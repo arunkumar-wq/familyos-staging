@@ -32,7 +32,8 @@
       "Bash(python -c ':*)",
       "Bash(mkdir -p graphify-out)",
       "Bash(rm -f .graphify_detect.json .graphify_extract.json .graphify_ast.json .graphify_semantic.json .graphify_analysis.json .graphify_labels.json)",
-      "Bash(rm -f graphify-out/.needs_update)"
+      "Bash(rm -f graphify-out/.needs_update)",
+      "Bash(findstr :5000)"
     ]
   }
 }

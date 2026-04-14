@@ -213,6 +213,20 @@ router.post('/analyze', auth, upload.single('file'), async (req, res) => {
     // DELETE temp file after analysis
     try { fs.unlinkSync(filePath); } catch (e) { console.error('Temp file cleanup error:', e.message); }
 
+    // Replace garbage OCR name with matched member name in fields
+    if (matchedMember && parsed.fields) {
+      const fullName = matchedMember.first_name + ' ' + matchedMember.last_name;
+      parsed.fields = parsed.fields.map(f => {
+        if (f.key === 'Full Name' || f.key === 'Name') {
+          const garbage = ['PHOTO', 'SIGNATURE', 'BARCODE', 'SPECIMEN', 'SAMPLE', 'VOID', 'H PHOTO', 'NOT DETECTED'];
+          if (!f.value || garbage.some(g => f.value.toUpperCase().includes(g)) || f.value === 'Not detected') {
+            return { ...f, value: fullName.toUpperCase(), confidence: 0.99 };
+          }
+        }
+        return f;
+      });
+    }
+
     res.json({
       type: parsed.type,
       category: parsed.category,
@@ -326,6 +340,23 @@ router.post('/upload', auth, upload.single('file'), async (req, res) => {
       if (fnameMatch) {
         autoMatchedMember = fnameMatch.first_name + ' ' + fnameMatch.last_name;
         autoMatchedId = fnameMatch.id;
+      }
+    }
+
+    // Replace garbage OCR name with actual selected member name
+    if (resolvedOwnerId && aiSummary.fields) {
+      const ownerInfo = db.prepare("SELECT first_name, last_name FROM users WHERE id=?").get(resolvedOwnerId);
+      if (ownerInfo) {
+        const fullName = ownerInfo.first_name + ' ' + ownerInfo.last_name;
+        aiSummary.fields = aiSummary.fields.map(f => {
+          if (f.key === 'Full Name' || f.key === 'Name') {
+            const garbage = ['PHOTO', 'SIGNATURE', 'BARCODE', 'SPECIMEN', 'SAMPLE', 'VOID', 'H PHOTO', 'NOT DETECTED'];
+            if (!f.value || garbage.some(g => f.value.toUpperCase().includes(g)) || f.value === 'Not detected') {
+              return { ...f, value: fullName.toUpperCase(), confidence: 0.99 };
+            }
+          }
+          return f;
+        });
       }
     }
 
@@ -613,7 +644,8 @@ function extractStructuredDataFromFile(filename, fullPath) {
 
 // ---- Real OCR extraction via Tesseract.js ----
 async function ocrExtract(filePath, mimeType) {
-  const ocrTypes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+  // Tesseract.js only supports images — NOT PDFs
+  const ocrTypes = ['image/jpeg', 'image/png', 'image/webp'];
   if (!ocrTypes.includes(mimeType)) {
     return { text: '', confidence: 0 };
   }
