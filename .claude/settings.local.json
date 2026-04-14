@@ -22,7 +22,17 @@
       "Bash(curl -s http://localhost:5000/api/health)",
       "Bash(netstat -ano)",
       "Bash(taskkill //F //IM node.exe)",
-      "Bash(npm run:*)"
+      "Bash(npm run:*)",
+      "Bash(node -c database/db.js)",
+      "Bash(node -c database/seed.js)",
+      "Bash(node -e ':*)",
+      "Bash(node server/index.js)",
+      "Bash(curl -s -X POST http://localhost:5000/api/auth/login -H \"Content-Type: application/json\" -d '{\"email\":\"gurmail@linio.ai\",\"password\":\"password123\"}')",
+      "Bash(python -c \"import sys; open\\('.graphify_python', 'w'\\).write\\(sys.executable\\)\")",
+      "Bash(python -c ':*)",
+      "Bash(mkdir -p graphify-out)",
+      "Bash(rm -f .graphify_detect.json .graphify_extract.json .graphify_ast.json .graphify_semantic.json .graphify_analysis.json .graphify_labels.json)",
+      "Bash(rm -f graphify-out/.needs_update)"
     ]
   }
 }
