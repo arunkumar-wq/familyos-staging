@@ -67,6 +67,9 @@ export default function DocumentsPage({ navigate }) {
   const [aiResults, setAiResults] = useState(null);
   const [viewMode, setViewMode] = useState('card');
   const [activeMenu, setActiveMenu] = useState(null);
+  const [hoverDoc, setHoverDoc] = useState(null);
+  const [hoverPos, setHoverPos] = useState({ x: 0, y: 0 });
+  const hoverTimeout = useRef(null);
   const fileInputRef = useRef();
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
@@ -314,6 +317,34 @@ export default function DocumentsPage({ navigate }) {
     }
   });
 
+  const handleDocHover = (e, d) => {
+    clearTimeout(hoverTimeout.current);
+    const rect = e.currentTarget.getBoundingClientRect();
+    hoverTimeout.current = setTimeout(() => {
+      const popupHeight = 400;
+      const popupWidth = 320;
+
+      let x = rect.right + 10;
+      if (x + popupWidth > window.innerWidth) {
+        x = rect.left - popupWidth - 10;
+      }
+
+      let y = rect.top;
+      if (y + popupHeight > window.innerHeight) {
+        y = window.innerHeight - popupHeight - 20;
+      }
+      if (y < 10) y = 10;
+
+      setHoverPos({ x, y });
+      setHoverDoc(d);
+    }, 400);
+  };
+
+  const handleDocLeave = () => {
+    clearTimeout(hoverTimeout.current);
+    setHoverDoc(null);
+  };
+
   const DocMenu = ({ d }) => (
     <div style={{ position: 'relative' }} onClick={e => e.stopPropagation()}>
       <button onClick={(e) => { e.stopPropagation(); setActiveMenu(activeMenu === d.id ? null : d.id); }}
@@ -444,7 +475,7 @@ export default function DocumentsPage({ navigate }) {
                     {group.docs.map(d => {
                       const ai = parseAi(d);
                       return (
-                        <tr key={d.id}>
+                        <tr key={d.id} onMouseEnter={(e) => handleDocHover(e, d)} onMouseLeave={handleDocLeave}>
                           <td>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingLeft: 16 }}>
                               <div style={{ width: 32, height: 32, borderRadius: 'var(--r-md)', background: 'var(--surface2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, flexShrink: 0 }}>{catIcon(d.category)}</div>
@@ -491,7 +522,7 @@ export default function DocumentsPage({ navigate }) {
                     {group.docs.map(d => {
                       const ai = parseAi(d);
                       return (
-                        <div key={d.id} className="doc-card" onClick={() => viewDoc(d)}>
+                        <div key={d.id} className="doc-card" onClick={() => viewDoc(d)} onMouseEnter={(e) => handleDocHover(e, d)} onMouseLeave={handleDocLeave}>
                           <div className="doc-card-icon">{catIcon(d.category)}</div>
                           <div className="doc-card-body">
                             <div className="doc-card-name">{d.name}</div>
@@ -897,6 +928,87 @@ export default function DocumentsPage({ navigate }) {
                 }}>Use Photo</button>
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {hoverDoc && (
+        <div className="doc-hover-popup" style={{
+          position: 'fixed',
+          top: Math.min(hoverPos.y, window.innerHeight - 350),
+          left: Math.min(hoverPos.x, window.innerWidth - 340),
+          zIndex: 9999,
+        }} onMouseEnter={() => clearTimeout(hoverTimeout.current)} onMouseLeave={handleDocLeave}>
+          <div className="doc-hover-preview">
+            {hoverDoc.file_path && hoverDoc.mime_type?.startsWith('image/') ? (
+              <img src={'/uploads/' + hoverDoc.file_path} alt={hoverDoc.name}
+                style={{ width: '100%', height: '100%', objectFit: 'contain', background: '#f8f8f8' }}
+                onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
+              />
+            ) : null}
+            {hoverDoc.file_path && hoverDoc.mime_type === 'application/pdf' ? (
+              <iframe src={'/uploads/' + hoverDoc.file_path + '#toolbar=0'} title={hoverDoc.name}
+                style={{ width: '100%', height: '100%', border: 'none' }}
+                onError={(e) => { e.target.style.display = 'none'; }}
+              />
+            ) : null}
+            <div style={{
+              width: '100%', height: '100%', display: 'flex', flexDirection: 'column',
+              alignItems: 'center', justifyContent: 'center', background: 'var(--surface2)', color: 'var(--txt4)',
+              position: 'absolute', top: 0, left: 0, zIndex: -1
+            }}>
+              <span style={{ fontSize: 48, marginBottom: 8 }}>{catIcon(hoverDoc.category)}</span>
+              <span style={{ fontSize: 12, fontWeight: 600 }}>{(() => { const ai = parseAi(hoverDoc); return ai?.type || hoverDoc.category; })()}</span>
+              {hoverDoc.file_size && <span style={{ fontSize: 11, color: 'var(--txt4)', marginTop: 4 }}>{hoverDoc.file_size}</span>}
+            </div>
+          </div>
+          <div className="doc-hover-details">
+            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--txt)', marginBottom: 8 }}>{hoverDoc.name}</div>
+            {(() => {
+              const ai = parseAi(hoverDoc);
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {ai?.type && (
+                    <div className="doc-hover-row">
+                      <span className="doc-hover-label">Type</span>
+                      <span className="doc-hover-value">{ai.type}</span>
+                    </div>
+                  )}
+                  <div className="doc-hover-row">
+                    <span className="doc-hover-label">Status</span>
+                    <Badge color={statusColor(hoverDoc.status)}>{statusLabel(hoverDoc.status)}</Badge>
+                  </div>
+                  <div className="doc-hover-row">
+                    <span className="doc-hover-label">Category</span>
+                    <span className="doc-hover-value" style={{ textTransform: 'capitalize' }}>{hoverDoc.category}</span>
+                  </div>
+                  <div className="doc-hover-row">
+                    <span className="doc-hover-label">Expiry</span>
+                    <span className="doc-hover-value">{hoverDoc.expiry_date ? fmtDate(hoverDoc.expiry_date) : 'N/A'}</span>
+                  </div>
+                  <div className="doc-hover-row">
+                    <span className="doc-hover-label">Uploaded</span>
+                    <span className="doc-hover-value">{hoverDoc.created_at ? fmtDate(hoverDoc.created_at) : '—'}</span>
+                  </div>
+                  <div className="doc-hover-row">
+                    <span className="doc-hover-label">File Size</span>
+                    <span className="doc-hover-value">{hoverDoc.file_size || '—'}</span>
+                  </div>
+                  {ai?.fields && ai.fields.length > 0 && (
+                    <>
+                      <div style={{ borderTop: '1px solid var(--border)', margin: '4px 0' }} />
+                      <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--txt3)', textTransform: 'uppercase', letterSpacing: '.04em' }}>AI Extracted Fields</div>
+                      {ai.fields.slice(0, 4).map((f, i) => (
+                        <div key={i} className="doc-hover-row">
+                          <span className="doc-hover-label">{f.key}</span>
+                          <span className="doc-hover-value">{f.value}</span>
+                        </div>
+                      ))}
+                    </>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         </div>
       )}
