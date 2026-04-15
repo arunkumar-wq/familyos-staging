@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 export default function LoginPage() {
   const { login } = useAuth();
   const [email, setEmail] = useState('gurmail@linio.ai');
-  const [password, setPassword] = useState('password123');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -40,13 +40,6 @@ export default function LoginPage() {
             {loading ? 'Signing in...' : 'Sign In'}
           </button>
         </form>
-        <div style={{marginTop:20,padding:16,background:'var(--surface2)',borderRadius:'var(--r-md)',border:'1px solid var(--border)'}}>
-          <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'.06em',color:'var(--accent)',marginBottom:8}}>Demo Credentials</div>
-          <div style={{fontSize:12,color:'var(--txt2)',lineHeight:1.7}}>
-            <div>Email: gurmail@linio.ai</div>
-            <div>Password: password123</div>
-          </div>
-        </div>
       </div>
     </div>
   );
