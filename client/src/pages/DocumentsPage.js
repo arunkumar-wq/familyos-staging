@@ -66,10 +66,16 @@ export default function DocumentsPage({ navigate }) {
   const [analyzing, setAnalyzing] = useState(false);
   const [aiResults, setAiResults] = useState(null);
   const [viewMode, setViewMode] = useState('card');
+  const [activeMenu, setActiveMenu] = useState(null);
   const fileInputRef = useRef();
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
 
+  useEffect(() => {
+    const handleClick = () => setActiveMenu(null);
+    document.addEventListener('click', handleClick);
+    return () => document.removeEventListener('click', handleClick);
+  }, []);
   useEffect(() => { const t = setTimeout(() => setDebouncedSearch(search), 350); return () => clearTimeout(t); }, [search]);
   useEffect(() => { api.get('/family/members').then(r => { setMembers(r.data); }).catch(()=>{}); }, []);
   useEffect(() => { loadDocs(); }, [cat, debouncedSearch, statusFilter]);
@@ -308,6 +314,33 @@ export default function DocumentsPage({ navigate }) {
     }
   });
 
+  const DocMenu = ({ d }) => (
+    <div style={{ position: 'relative' }} onClick={e => e.stopPropagation()}>
+      <button onClick={(e) => { e.stopPropagation(); setActiveMenu(activeMenu === d.id ? null : d.id); }}
+        style={{ width: 32, height: 32, borderRadius: '50%', border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--txt3)' }}
+        title="More actions">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+      </button>
+      {activeMenu === d.id && (
+        <div style={{ position: 'absolute', top: '100%', right: 0, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.12)', zIndex: 50, minWidth: 140, padding: '4px 0', animation: 'fadeIn 150ms ease' }}>
+          <button onClick={() => { setActiveMenu(null); viewDoc(d); }} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '8px 14px', border: 'none', background: 'none', cursor: 'pointer', fontSize: 13, color: 'var(--txt)', textAlign: 'left' }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            View
+          </button>
+          <button onClick={() => { setActiveMenu(null); downloadDoc(d); }} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '8px 14px', border: 'none', background: 'none', cursor: 'pointer', fontSize: 13, color: 'var(--txt)', textAlign: 'left' }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Download
+          </button>
+          <div style={{ height: 1, background: 'var(--border)', margin: '4px 0' }} />
+          <button onClick={() => { setActiveMenu(null); setDeleteTarget(d); }} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '8px 14px', border: 'none', background: 'none', cursor: 'pointer', fontSize: 13, color: '#dc2626', textAlign: 'left' }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            Delete
+          </button>
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <div className="page-inner">
       {toast && (
@@ -427,18 +460,8 @@ export default function DocumentsPage({ navigate }) {
                           <td>
                             {d.created_at ? fmtDate(d.created_at) : '—'}
                           </td>
-                          <td>
-                            <div className="doc-table-actions" style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
-                              <button className="doc-action-btn" onClick={(e) => { e.stopPropagation(); viewDoc(d); }} title="View">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                              </button>
-                              <button className="doc-action-btn" onClick={(e) => { e.stopPropagation(); downloadDoc(d); }} title="Download">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                              </button>
-                              <button className="doc-action-btn doc-action-btn-danger" onClick={(e) => { e.stopPropagation(); setDeleteTarget(d); }} title="Delete">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                              </button>
-                            </div>
+                          <td style={{ textAlign: 'right' }}>
+                            <DocMenu d={d} />
                           </td>
                         </tr>
                       );
@@ -469,17 +492,13 @@ export default function DocumentsPage({ navigate }) {
                       const ai = parseAi(d);
                       return (
                         <div key={d.id} className="doc-card" onClick={() => viewDoc(d)}>
-                          {/* Card icon — bigger */}
-                          <div className="doc-card-icon">
-                            {catIcon(d.category)}
-                          </div>
-                          {/* Card content — more details */}
+                          <div className="doc-card-icon">{catIcon(d.category)}</div>
                           <div className="doc-card-body">
                             <div className="doc-card-name">{d.name}</div>
                             {ai?.type && <div className="doc-card-type">{ai.type}</div>}
                             <div className="doc-card-details">
-                              {d.expiry_date && <span>Exp: {fmtDate(d.expiry_date)}</span>}
-                              {d.created_at && <span>Uploaded: {fmtDate(d.created_at)}</span>}
+                              <span>Expiry: {d.expiry_date ? fmtDate(d.expiry_date) : 'N/A'}</span>
+                              <span>Uploaded: {d.created_at ? fmtDate(d.created_at) : '—'}</span>
                             </div>
                             <div className="doc-card-meta">
                               <Badge color={statusColor(d.status)}>{statusLabel(d.status)}</Badge>
@@ -487,16 +506,8 @@ export default function DocumentsPage({ navigate }) {
                             </div>
                           </div>
                           {/* Action icons — top right on hover */}
-                          <div className="doc-card-actions" onClick={e => e.stopPropagation()}>
-                            <button className="doc-action-btn" onClick={() => viewDoc(d)} title="View">
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                            </button>
-                            <button className="doc-action-btn" onClick={() => downloadDoc(d)} title="Download">
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                            </button>
-                            <button className="doc-action-btn doc-action-btn-danger" onClick={() => setDeleteTarget(d)} title="Delete">
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                            </button>
+                          <div style={{ position: 'absolute', top: 8, right: 8 }}>
+                            <DocMenu d={d} />
                           </div>
                         </div>
                       );
@@ -536,10 +547,8 @@ export default function DocumentsPage({ navigate }) {
                           <span>Expiry: {d.expiry_date ? fmtDate(d.expiry_date) : 'N/A'}</span>
                           {d.created_at && <span> · Uploaded: {fmtDate(d.created_at)}</span>}
                         </div>
-                        <div style={{ display: 'flex', gap: 8 }}>
-                          <button className="btn btn-sm btn-teal" style={{ flex: 1 }} onClick={() => viewDoc(d)}>View</button>
-                          <button className="btn btn-sm btn-outline" style={{ flex: 1 }} onClick={() => downloadDoc(d)}>Download</button>
-                          <button className="btn btn-sm" style={{ flex: 1, background: 'var(--red)', color: '#fff', borderColor: 'var(--red)' }} onClick={() => setDeleteTarget(d)}>Delete</button>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                          <DocMenu d={d} />
                         </div>
                       </div>
                     );

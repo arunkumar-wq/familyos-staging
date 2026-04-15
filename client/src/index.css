@@ -694,24 +694,6 @@ button{cursor:pointer;font-family:inherit}input,select,textarea{font-family:inhe
   margin-top: 4px;
 }
 
-.doc-card-actions {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  display: flex;
-  gap: 2px;
-  opacity: 0;
-  transition: opacity 150ms ease;
-  background: var(--surface);
-  border-radius: 8px;
-  padding: 2px;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.1);
-}
-
-.doc-card:hover .doc-card-actions {
-  opacity: 1;
-}
-
 .doc-action-btn {
   width: 30px;
   height: 30px;
@@ -736,13 +718,8 @@ button{cursor:pointer;font-family:inherit}input,select,textarea{font-family:inhe
   color: #dc2626;
 }
 
-.doc-table-actions { opacity: 0; transition: opacity 150ms ease; }
-tr:hover .doc-table-actions { opacity: 1; }
-
 @media(max-width:768px) {
   .doc-card-grid { grid-template-columns: 1fr; gap: 8px; padding: 8px; }
-  .doc-card-actions { opacity: 1; }
-  .doc-table-actions { opacity: 1; }
 }
 
 @media(max-width:430px) {
