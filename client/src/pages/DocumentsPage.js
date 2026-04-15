@@ -65,6 +65,7 @@ export default function DocumentsPage({ navigate }) {
   const [cameraStream, setCameraStream] = useState(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [aiResults, setAiResults] = useState(null);
+  const [viewMode, setViewMode] = useState('card');
   const fileInputRef = useRef();
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
@@ -331,6 +332,17 @@ export default function DocumentsPage({ navigate }) {
         </div>
       </div>
 
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+        <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', overflow: 'hidden' }}>
+          <button onClick={() => setViewMode('card')} style={{ padding: '6px 10px', border: 'none', background: viewMode === 'card' ? 'var(--accent)' : 'var(--surface)', cursor: 'pointer', display: 'flex', alignItems: 'center' }} title="Card view">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={viewMode === 'card' ? '#fff' : 'var(--txt3)'} strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+          </button>
+          <button onClick={() => setViewMode('list')} style={{ padding: '6px 10px', border: 'none', borderLeft: '1px solid var(--border)', background: viewMode === 'list' ? 'var(--accent)' : 'var(--surface)', cursor: 'pointer', display: 'flex', alignItems: 'center' }} title="List view">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={viewMode === 'list' ? '#fff' : 'var(--txt3)'} strokeWidth="2"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
+          </button>
+        </div>
+      </div>
+
       {/* Filter Panel */}
       {showFilter && (
         <div className="card" style={{ padding: '12px 16px', marginBottom: 12, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -375,11 +387,11 @@ export default function DocumentsPage({ navigate }) {
           ) : (
             <>
             {/* Desktop Table */}
-            <div className="doc-table-desktop">
+            <div className="doc-table-desktop" style={{ display: viewMode === 'list' ? 'block' : 'none' }}>
             <div className="table-scroll">
             <table className="data-table">
               <thead>
-                <tr><th>Document</th><th>Status</th><th>Expiry</th><th>AI</th><th>Uploaded</th><th style={{textAlign:'right'}}>Actions</th></tr>
+                <tr><th>Document</th><th>Status</th><th>Category</th><th>Expiry</th><th>Uploaded</th><th style={{textAlign:'right'}}>Actions</th></tr>
               </thead>
               <tbody>
                 {Object.entries(grouped).map(([name, group]) => (
@@ -410,25 +422,22 @@ export default function DocumentsPage({ navigate }) {
                             </div>
                           </td>
                           <td><Badge color={statusColor(d.status)}>{statusLabel(d.status)}</Badge></td>
+                          <td style={{ fontSize: 12, color: 'var(--txt3)', textTransform: 'capitalize' }}>{d.category}</td>
                           <td style={{ fontSize: 13, color: 'var(--txt3)' }}>{d.expiry_date ? fmtDate(d.expiry_date) : 'N/A'}</td>
-                          <td>
-                            {d.ai_analyzed && ai?.confidence ? (
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                <span style={{ fontSize: 13, fontWeight: 600 }}>{Math.round(ai.confidence * 100)}%</span>
-                                <div className="progress-track" style={{ width: 50 }}>
-                                  <div className="progress-fill" style={{ width: (ai.confidence * 100) + '%', background: 'var(--accent)' }} />
-                                </div>
-                              </div>
-                            ) : '—'}
-                          </td>
                           <td>
                             {d.created_at ? fmtDate(d.created_at) : '—'}
                           </td>
                           <td>
-                            <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
-                              <button className="btn btn-xs btn-teal" onClick={() => viewDoc(d)}>View</button>
-                              <button className="btn btn-xs btn-outline" onClick={() => downloadDoc(d)}>Download</button>
-                              <button className="btn btn-xs" style={{ background: 'var(--red)', color: '#fff', borderColor: 'var(--red)' }} onClick={() => setDeleteTarget(d)}>Delete</button>
+                            <div className="doc-table-actions" style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
+                              <button className="doc-action-btn" onClick={(e) => { e.stopPropagation(); viewDoc(d); }} title="View">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                              </button>
+                              <button className="doc-action-btn" onClick={(e) => { e.stopPropagation(); downloadDoc(d); }} title="Download">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                              </button>
+                              <button className="doc-action-btn doc-action-btn-danger" onClick={(e) => { e.stopPropagation(); setDeleteTarget(d); }} title="Delete">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                              </button>
                             </div>
                           </td>
                         </tr>
@@ -440,6 +449,62 @@ export default function DocumentsPage({ navigate }) {
             </table>
             </div>
             </div>
+
+            {viewMode === 'card' && (
+              <div className="doc-card-grid">
+                {Object.entries(grouped).map(([name, group]) => (
+                  <React.Fragment key={name}>
+                    <div style={{ gridColumn: '1/-1', display: 'flex', alignItems: 'center', gap: 8, padding: '12px 0 6px' }}>
+                      {group.avatar_url ? (
+                        <img src={group.avatar_url} alt={name} style={{ width: 24, height: 24, borderRadius: '50%', objectFit: 'cover' }} />
+                      ) : (
+                        <div style={{ width: 24, height: 24, borderRadius: '50%', background: '#e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                        </div>
+                      )}
+                      <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--txt)' }}>{name}</span>
+                      <span style={{ fontSize: 11, color: 'var(--txt4)' }}>({group.docs.length} docs)</span>
+                    </div>
+                    {group.docs.map(d => {
+                      const ai = parseAi(d);
+                      return (
+                        <div key={d.id} className="doc-card" onClick={() => viewDoc(d)}>
+                          {/* Card icon — bigger */}
+                          <div className="doc-card-icon">
+                            {catIcon(d.category)}
+                          </div>
+                          {/* Card content — more details */}
+                          <div className="doc-card-body">
+                            <div className="doc-card-name">{d.name}</div>
+                            {ai?.type && <div className="doc-card-type">{ai.type}</div>}
+                            <div className="doc-card-details">
+                              {d.expiry_date && <span>Exp: {fmtDate(d.expiry_date)}</span>}
+                              {d.created_at && <span>Uploaded: {fmtDate(d.created_at)}</span>}
+                            </div>
+                            <div className="doc-card-meta">
+                              <Badge color={statusColor(d.status)}>{statusLabel(d.status)}</Badge>
+                              <span className="doc-card-category">{d.category}</span>
+                            </div>
+                          </div>
+                          {/* Action icons — top right on hover */}
+                          <div className="doc-card-actions" onClick={e => e.stopPropagation()}>
+                            <button className="doc-action-btn" onClick={() => viewDoc(d)} title="View">
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                            </button>
+                            <button className="doc-action-btn" onClick={() => downloadDoc(d)} title="Download">
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                            </button>
+                            <button className="doc-action-btn doc-action-btn-danger" onClick={() => setDeleteTarget(d)} title="Delete">
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </React.Fragment>
+                ))}
+              </div>
+            )}
 
             {/* Mobile Card List */}
             <div className="doc-cards-mobile">
@@ -470,13 +535,6 @@ export default function DocumentsPage({ navigate }) {
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 12, color: 'var(--txt3)', marginBottom: 10 }}>
                           <span>Expiry: {d.expiry_date ? fmtDate(d.expiry_date) : 'N/A'}</span>
                           {d.created_at && <span> · Uploaded: {fmtDate(d.created_at)}</span>}
-                          {d.ai_analyzed && ai?.confidence && (
-                            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                              <span style={{ fontWeight: 600, color: 'var(--txt)' }}>{Math.round(ai.confidence * 100)}%</span>
-                              <span style={{ fontSize: 10, color: 'var(--txt4)' }}>AI</span>
-                              <div className="progress-track" style={{ width: 36 }}><div className="progress-fill" style={{ width: (ai.confidence * 100) + '%', background: 'var(--accent)' }} /></div>
-                            </span>
-                          )}
                         </div>
                         <div style={{ display: 'flex', gap: 8 }}>
                           <button className="btn btn-sm btn-teal" style={{ flex: 1 }} onClick={() => viewDoc(d)}>View</button>

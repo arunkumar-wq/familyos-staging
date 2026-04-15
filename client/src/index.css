@@ -610,3 +610,142 @@ button{cursor:pointer;font-family:inherit}input,select,textarea{font-family:inhe
   .settings-tabs-mobile{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
   .settings-tabs-mobile::-webkit-scrollbar{display:none}
 }
+
+/* Document Card Grid (Google Drive style) */
+.doc-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 10px;
+  padding: 16px;
+}
+
+.doc-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 150ms ease;
+  background: var(--surface);
+  position: relative;
+}
+
+.doc-card:hover {
+  border-color: var(--accent);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  background: #fafcff;
+}
+
+.doc-card-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  background: var(--surface2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.doc-card-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.doc-card-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--txt);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.doc-card-type {
+  font-size: 11px;
+  color: var(--txt4);
+  margin-top: 2px;
+}
+
+.doc-card-details {
+  display: flex;
+  gap: 12px;
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--txt4);
+}
+
+.doc-card-category {
+  font-size: 10px;
+  text-transform: capitalize;
+  color: var(--txt4);
+  background: var(--surface2);
+  padding: 1px 8px;
+  border-radius: 10px;
+}
+
+.doc-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.doc-card-actions {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 150ms ease;
+  background: var(--surface);
+  border-radius: 8px;
+  padding: 2px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+}
+
+.doc-card:hover .doc-card-actions {
+  opacity: 1;
+}
+
+.doc-action-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--txt3);
+  transition: all 150ms ease;
+}
+
+.doc-action-btn:hover {
+  background: var(--surface2);
+  color: var(--txt);
+}
+
+.doc-action-btn-danger:hover {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.doc-table-actions { opacity: 0; transition: opacity 150ms ease; }
+tr:hover .doc-table-actions { opacity: 1; }
+
+@media(max-width:768px) {
+  .doc-card-grid { grid-template-columns: 1fr; gap: 8px; padding: 8px; }
+  .doc-card-actions { opacity: 1; }
+  .doc-table-actions { opacity: 1; }
+}
+
+@media(max-width:430px) {
+  .doc-card { padding: 10px; gap: 10px; }
+  .doc-card-icon { width: 34px; height: 34px; font-size: 16px; }
+}
