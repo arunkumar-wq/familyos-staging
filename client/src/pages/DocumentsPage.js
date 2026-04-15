@@ -941,13 +941,13 @@ export default function DocumentsPage({ navigate }) {
         }} onMouseEnter={() => clearTimeout(hoverTimeout.current)} onMouseLeave={handleDocLeave}>
           <div className="doc-hover-preview">
             {hoverDoc.file_path && hoverDoc.mime_type?.startsWith('image/') ? (
-              <img src={'/uploads/' + hoverDoc.file_path} alt={hoverDoc.name}
+              <img src={(hoverDoc.file_path?.endsWith('.svg') ? '/doc-previews/' : '/uploads/') + hoverDoc.file_path} alt={hoverDoc.name}
                 style={{ width: '100%', height: '100%', objectFit: 'contain', background: '#f8f8f8' }}
                 onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
               />
             ) : null}
             {hoverDoc.file_path && hoverDoc.mime_type === 'application/pdf' ? (
-              <iframe src={'/uploads/' + hoverDoc.file_path + '#toolbar=0'} title={hoverDoc.name}
+              <iframe src={(hoverDoc.file_path?.endsWith('.svg') ? '/doc-previews/' : '/uploads/') + hoverDoc.file_path + '#toolbar=0'} title={hoverDoc.name}
                 style={{ width: '100%', height: '100%', border: 'none' }}
                 onError={(e) => { e.target.style.display = 'none'; }}
               />

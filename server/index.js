@@ -36,6 +36,7 @@ app.use((req, res, next) => {
 
 // Serve uploaded files (must be before API routes)
 app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
+app.use('/doc-previews', express.static(path.join(__dirname, '..', 'client', 'public', 'doc-previews')));
 
 // Rate limiting
 const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 200, message: { error: 'Too many requests' } });
