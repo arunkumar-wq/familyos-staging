@@ -522,7 +522,24 @@ export default function DocumentsPage({ navigate }) {
                     {group.docs.map(d => {
                       const ai = parseAi(d);
                       return (
-                        <div key={d.id} className="doc-card" onClick={() => viewDoc(d)} onMouseEnter={(e) => handleDocHover(e, d)} onMouseLeave={handleDocLeave}>
+                        <div key={d.id} className="doc-card" onClick={(e) => {
+                          if (window.innerWidth <= 768) {
+                            e.stopPropagation();
+                            if (hoverDoc && hoverDoc.id === d.id) {
+                              setHoverDoc(null);
+                            } else {
+                              const rect = e.currentTarget.getBoundingClientRect();
+                              const popupHeight = 400;
+                              let y = rect.bottom + 10;
+                              if (y + popupHeight > window.innerHeight) y = rect.top - popupHeight - 10;
+                              if (y < 10) y = 10;
+                              setHoverPos({ x: (window.innerWidth - 320) / 2, y });
+                              setHoverDoc(d);
+                            }
+                          } else {
+                            viewDoc(d);
+                          }
+                        }} onMouseEnter={(e) => { if (window.innerWidth > 768) handleDocHover(e, d); }} onMouseLeave={() => { if (window.innerWidth > 768) handleDocLeave(); }}>
                           <div className="doc-card-icon">{catIcon(d.category)}</div>
                           <div className="doc-card-body">
                             <div className="doc-card-name">{d.name}</div>
@@ -932,35 +949,37 @@ export default function DocumentsPage({ navigate }) {
         </div>
       )}
 
+      {hoverDoc && window.innerWidth <= 768 && (
+        <div onClick={() => setHoverDoc(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.3)', zIndex: 9998 }} />
+      )}
       {hoverDoc && (
         <div className="doc-hover-popup" style={{
           position: 'fixed',
           top: Math.min(hoverPos.y, window.innerHeight - 350),
           left: Math.min(hoverPos.x, window.innerWidth - 340),
           zIndex: 9999,
-        }} onMouseEnter={() => clearTimeout(hoverTimeout.current)} onMouseLeave={handleDocLeave}>
-          <div className="doc-hover-preview">
-            {hoverDoc.file_path && hoverDoc.mime_type?.startsWith('image/') ? (
-              <img src={(hoverDoc.file_path?.endsWith('.svg') ? '/doc-previews/' : '/uploads/') + hoverDoc.file_path} alt={hoverDoc.name}
-                style={{ width: '100%', height: '100%', objectFit: 'contain', background: '#f8f8f8' }}
-                onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
-              />
-            ) : null}
-            {hoverDoc.file_path && hoverDoc.mime_type === 'application/pdf' ? (
-              <iframe src={(hoverDoc.file_path?.endsWith('.svg') ? '/doc-previews/' : '/uploads/') + hoverDoc.file_path + '#toolbar=0'} title={hoverDoc.name}
-                style={{ width: '100%', height: '100%', border: 'none' }}
-                onError={(e) => { e.target.style.display = 'none'; }}
-              />
-            ) : null}
-            <div style={{
-              width: '100%', height: '100%', display: 'flex', flexDirection: 'column',
-              alignItems: 'center', justifyContent: 'center', background: 'var(--surface2)', color: 'var(--txt4)',
-              position: 'absolute', top: 0, left: 0, zIndex: -1
-            }}>
-              <span style={{ fontSize: 48, marginBottom: 8 }}>{catIcon(hoverDoc.category)}</span>
-              <span style={{ fontSize: 12, fontWeight: 600 }}>{(() => { const ai = parseAi(hoverDoc); return ai?.type || hoverDoc.category; })()}</span>
-              {hoverDoc.file_size && <span style={{ fontSize: 11, color: 'var(--txt4)', marginTop: 4 }}>{hoverDoc.file_size}</span>}
+        }} onMouseEnter={() => clearTimeout(hoverTimeout.current)} onMouseLeave={() => { if (window.innerWidth > 768) handleDocLeave(); }}>
+          {window.innerWidth <= 768 && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', borderBottom: '1px solid var(--border)' }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--txt)' }}>Document Details</span>
+              <button onClick={(e) => { e.stopPropagation(); setHoverDoc(null); }} style={{ background: 'none', border: 'none', fontSize: 20, color: 'var(--txt3)', cursor: 'pointer', lineHeight: 1, padding: '2px 6px' }}>&times;</button>
             </div>
+          )}
+          <div className="doc-hover-preview">
+            {(() => {
+              const previewPath = hoverDoc.file_path
+                ? (hoverDoc.file_path.endsWith('.svg') ? '/doc-previews/' : '/uploads/') + hoverDoc.file_path
+                : null;
+              if (previewPath) {
+                return <img src={previewPath} alt={hoverDoc.name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} onError={(e) => { e.target.src = ''; e.target.style.display = 'none'; }} />;
+              }
+              return (
+                <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #f0f4f8, #e8edf3)' }}>
+                  <span style={{ fontSize: 44 }}>{catIcon(hoverDoc.category)}</span>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--txt3)', marginTop: 6 }}>{(() => { const ai = parseAi(hoverDoc); return ai?.type || hoverDoc.name; })()}</span>
+                </div>
+              );
+            })()}
           </div>
           <div className="doc-hover-details">
             <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--txt)', marginBottom: 8 }}>{hoverDoc.name}</div>
@@ -1010,6 +1029,16 @@ export default function DocumentsPage({ navigate }) {
               );
             })()}
           </div>
+          {window.innerWidth <= 768 && (
+            <div style={{ display: 'flex', gap: 12, padding: '10px 14px', borderTop: '1px solid var(--border)', justifyContent: 'flex-end' }}>
+              <button onClick={(e) => { e.stopPropagation(); setHoverDoc(null); viewDoc(hoverDoc); }} style={{ width: 44, height: 44, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }} title="View">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              </button>
+              <button onClick={(e) => { e.stopPropagation(); setHoverDoc(null); downloadDoc(hoverDoc); }} style={{ width: 44, height: 44, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }} title="Download">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
