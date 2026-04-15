@@ -321,17 +321,17 @@ export default function DocumentsPage({ navigate }) {
     clearTimeout(hoverTimeout.current);
     const rect = e.currentTarget.getBoundingClientRect();
     hoverTimeout.current = setTimeout(() => {
-      const popupHeight = 400;
       const popupWidth = 320;
+      const popupHeight = 400;
 
-      let x = rect.right + 10;
-      if (x + popupWidth > window.innerWidth) {
-        x = rect.left - popupWidth - 10;
-      }
+      let x = rect.left + (rect.width / 2) - (popupWidth / 2);
 
-      let y = rect.top;
+      if (x < 10) x = 10;
+      if (x + popupWidth > window.innerWidth - 10) x = window.innerWidth - popupWidth - 10;
+
+      let y = rect.bottom + 8;
       if (y + popupHeight > window.innerHeight) {
-        y = window.innerHeight - popupHeight - 20;
+        y = rect.top - popupHeight - 8;
       }
       if (y < 10) y = 10;
 
@@ -475,7 +475,26 @@ export default function DocumentsPage({ navigate }) {
                     {group.docs.map(d => {
                       const ai = parseAi(d);
                       return (
-                        <tr key={d.id} onMouseEnter={(e) => handleDocHover(e, d)} onMouseLeave={handleDocLeave}>
+                        <tr key={d.id}
+                          onClick={(e) => {
+                            if (window.innerWidth <= 768) {
+                              e.stopPropagation();
+                              if (hoverDoc && hoverDoc.id === d.id) {
+                                setHoverDoc(null);
+                              } else {
+                                const rect = e.currentTarget.getBoundingClientRect();
+                                const popupHeight = 400;
+                                let y = rect.bottom + 8;
+                                if (y + popupHeight > window.innerHeight) y = rect.top - popupHeight - 8;
+                                if (y < 10) y = 10;
+                                setHoverPos({ x: (window.innerWidth - 320) / 2, y });
+                                setHoverDoc(d);
+                              }
+                            }
+                          }}
+                          onMouseEnter={(e) => { if (window.innerWidth > 768) handleDocHover(e, d); }}
+                          onMouseLeave={() => { if (window.innerWidth > 768) handleDocLeave(); }}
+                        >
                           <td>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingLeft: 16 }}>
                               <div style={{ width: 32, height: 32, borderRadius: 'var(--r-md)', background: 'var(--surface2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, flexShrink: 0 }}>{catIcon(d.category)}</div>
