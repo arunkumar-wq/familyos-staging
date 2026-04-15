@@ -633,15 +633,14 @@ export default function DocumentsPage({ navigate }) {
         <Modal title="Upload Document" onClose={closeUploadFlow} maxWidth={500}
           footer={(
             <>
-              {uploadStep > 1 && uploadStep < 4 && <button className="btn btn-outline" onClick={() => setUploadStep(s => s - 1)}>Back</button>}
-              {uploadStep !== 0 && uploadStep < 3 && <button className="btn btn-outline" onClick={closeUploadFlow}>Cancel</button>}
-              {uploadStep === 2 && <button className="btn btn-teal" onClick={() => setUploadStep(3)} disabled={!selectedMember}>Next</button>}
-              {uploadStep === 3 && <button className="btn btn-teal" onClick={submitUpload} disabled={uploading}>{uploading ? 'Uploading...' : 'Upload'}</button>}
+              {uploadStep === 4 && null}
+              {uploadStep === 2 && <button className="btn btn-outline" onClick={closeUploadFlow}>Cancel</button>}
+              {uploadStep === 2 && <button className="btn btn-teal" onClick={submitUpload} disabled={!selectedMember || uploading}>{uploading ? 'Uploading...' : 'Upload'}</button>}
               {uploadStep === 4 && <button className="btn btn-teal" onClick={closeUploadFlow}>Done</button>}
             </>
           )}
         >
-          {uploadStep > 0 && <div style={{ fontSize: 12, color: 'var(--txt3)', marginBottom: 12, fontWeight: 600 }}>Step {uploadStep} of 4</div>}
+          {uploadStep > 0 && <div style={{ fontSize: 12, color: 'var(--txt3)', marginBottom: 12, fontWeight: 600 }}>{uploadStep === 2 ? 'Select Member' : uploadStep === 4 ? 'Complete' : ''}</div>}
           {uploadError && <div role="alert" style={{ background: 'var(--red-bg)', border: '1px solid var(--red-border)', borderRadius: 8, padding: '10px 14px', marginBottom: 12, color: 'var(--red)', fontSize: 13 }}>{uploadError}</div>}
 
           {uploadStep === 0 && (
@@ -740,7 +739,7 @@ export default function DocumentsPage({ navigate }) {
             </div>
           )}
 
-          {uploadStep === 3 && (
+          {false && uploadStep === 3 && (
             <div>
               <div className="section-label" style={{ marginBottom: 10 }}>Select Category</div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
