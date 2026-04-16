@@ -85,7 +85,7 @@ export default function DocumentsPage({ navigate }) {
   useEffect(() => { loadDocs(); }, [cat, debouncedSearch, statusFilter]);
   useEffect(() => {
     api.get('/documents/scores').then(r => setScores(r.data)).catch(err => console.error('Scores fetch failed:', err));
-  }, []);
+  }, [docs]);
 
   const loadDocs = async () => {
     setLoading(true);
@@ -171,6 +171,7 @@ export default function DocumentsPage({ navigate }) {
         setUploadForm(f => ({ ...f, category: resp.data.aiSummary.category }));
       }
       loadDocs();
+      api.get('/documents/scores').then(r => setScores(r.data)).catch(() => {});
     } catch (e) {
       const errMsg = e.response?.data?.error || e.message || 'Upload failed';
       console.error('Upload error:', e);

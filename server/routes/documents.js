@@ -795,23 +795,43 @@ function parseDocumentFields(ocrText, filename) {
       /(\d{4}[\/\-]\d{1,2}[\/\-]\d{1,2})/,
     ];
 
+    // Normalize text: collapse whitespace, uppercase
+    const normalized = text.replace(/\s+/g, ' ').toUpperCase();
+
     for (const kw of keywords) {
-      // Match keyword followed by date within 50 chars (ignoring line breaks)
-      const kwRegex = new RegExp('\\b' + kw + '\\b[\\s:.\\-]{0,8}([^\\n\\r]{0,50})', 'i');
-      const kwMatches = [...text.matchAll(new RegExp(kwRegex.source, 'gi'))];
+      const kwUpper = kw.toUpperCase();
+      // Try exact match first
+      let idx = normalized.indexOf(kwUpper);
 
-      for (const kwMatch of kwMatches) {
-        const contextBefore = text.substring(Math.max(0, kwMatch.index - 30), kwMatch.index).toUpperCase();
-
-        // Skip if avoidKeywords are near this match (prevents DOB match when looking for Expiry, etc.)
-        const hasAvoidKeyword = avoidKeywords.some(avoid => contextBefore.includes(avoid.toUpperCase()));
-        if (hasAvoidKeyword) continue;
-
-        const afterKeyword = kwMatch[1];
-        for (const p of datePatterns) {
-          const dm = afterKeyword.match(p);
-          if (dm) return dm[1].trim();
+      // If not found, try without spaces (handles "DateofBirth" → "DATEOFBIRTH")
+      if (idx === -1) {
+        const kwNoSpace = kwUpper.replace(/\s/g, '');
+        const textNoSpace = normalized.replace(/\s/g, '');
+        const idxNoSpace = textNoSpace.indexOf(kwNoSpace);
+        if (idxNoSpace !== -1) {
+          // Map back to original text position (approximate)
+          let count = 0;
+          for (let i = 0; i < normalized.length; i++) {
+            if (normalized[i] !== ' ') {
+              if (count === idxNoSpace) { idx = i; break; }
+              count++;
+            }
+          }
         }
+      }
+
+      if (idx === -1) continue;
+
+      // Check avoidKeywords nearby
+      const contextBefore = normalized.substring(Math.max(0, idx - 30), idx);
+      if (avoidKeywords.some(avoid => contextBefore.includes(avoid.toUpperCase()))) continue;
+
+      // Look at next 60 chars after keyword
+      const after = normalized.substring(idx + kwUpper.length, idx + kwUpper.length + 60);
+
+      for (const p of datePatterns) {
+        const dm = after.match(p);
+        if (dm) return dm[1].trim();
       }
     }
     return null;
