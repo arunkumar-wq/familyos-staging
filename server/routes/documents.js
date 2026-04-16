@@ -496,7 +496,15 @@ router.post('/upload', auth, upload.single('file'), async (req, res) => {
   } catch (err) {
     console.error('POST /documents/upload error:', err.message);
     console.error('Stack:', err.stack);
-    res.status(500).json({ error: 'Upload failed: ' + (err.message || 'Unknown error') });
+    // Cleanup uploaded file on error
+    if (req.file && req.file.filename) {
+      const fs = require('fs');
+      try { fs.unlinkSync(path.join(__dirname, '..', '..', 'uploads', req.file.filename)); } catch(e) {}
+    }
+    res.status(500).json({
+      error: err.message || 'Upload failed',
+      details: err.code || 'unknown'
+    });
   }
 });
 

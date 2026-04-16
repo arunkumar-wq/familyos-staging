@@ -208,10 +208,26 @@ export default function DocumentsPage({ navigate }) {
     if (!videoRef.current || !canvasRef.current) return;
     const video = videoRef.current;
     const canvas = canvasRef.current;
-    canvas.width = video.videoWidth || 1280;
-    canvas.height = video.videoHeight || 720;
-    canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
-    setCapturedImage(canvas.toDataURL('image/jpeg', 0.90));
+
+    // Limit max dimension to 1600px to keep file size reasonable
+    const maxDim = 1600;
+    let w = video.videoWidth || 1280;
+    let h = video.videoHeight || 720;
+
+    if (w > maxDim || h > maxDim) {
+      if (w > h) {
+        h = Math.round((maxDim / w) * h);
+        w = maxDim;
+      } else {
+        w = Math.round((maxDim / h) * w);
+        h = maxDim;
+      }
+    }
+
+    canvas.width = w;
+    canvas.height = h;
+    canvas.getContext('2d').drawImage(video, 0, 0, w, h);
+    setCapturedImage(canvas.toDataURL('image/jpeg', 0.85)); // 85% quality is enough for OCR
     video.pause();
   };
 

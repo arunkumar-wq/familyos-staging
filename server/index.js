@@ -66,6 +66,17 @@ if (process.env.NODE_ENV === 'production') {
   app.get('*', (_, res) => res.sendFile(path.join(buildPath, 'index.html')));
 }
 
+// ─── MULTER ERROR HANDLER ────────────────────────────────────────────
+app.use((err, req, res, next) => {
+  if (err && err.code === 'LIMIT_FILE_SIZE') {
+    return res.status(413).json({ error: 'File too large. Maximum size is 25MB.' });
+  }
+  if (err && err.message && err.message.includes('not allowed')) {
+    return res.status(400).json({ error: err.message });
+  }
+  next(err);
+});
+
 // ─── ERROR HANDLER ───────────────────────────────────────────────────
 app.use((err, req, res, next) => {
   console.error('Error:', err.message);
