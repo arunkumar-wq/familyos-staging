@@ -181,7 +181,7 @@ button{cursor:pointer;font-family:inherit}input,select,textarea{font-family:inhe
 .member-icon-btn-danger:hover{background:#fee2e2;color:#dc2626}
 
 /* ─── AI ALERT CARDS (Dashboard) ─── */
-.ai-alert-card{border-radius:var(--r-md);padding:12px 14px;cursor:pointer;transition:all 200ms ease;overflow:hidden;display:flex;flex-direction:column;gap:6px}
+.ai-alert-card{border-radius:var(--r-md);padding:12px 14px;cursor:pointer;transition:all 200ms ease;overflow:hidden;display:flex;flex-direction:column;gap:6px;min-height:100px;justify-content:space-between}
 .ai-alert-card:hover{opacity:.9;transform:scale(1.01)}
 .ai-alert-card:active{opacity:.85;transform:scale(.98)}
 .ai-alert-card-header{display:flex;align-items:flex-start;gap:8px;justify-content:space-between}
@@ -370,7 +370,7 @@ button{cursor:pointer;font-family:inherit}input,select,textarea{font-family:inhe
 .dash-grid-2 > .card{min-width:0;overflow:hidden}
 .dash-stats-grid,.dash-grid-2,.ai-alerts-grid,.dash-chart-wrap{max-width:100%;min-width:0}
 .dash-stats-grid > *,.dash-grid-2 > *,.ai-alerts-grid > *{min-width:0;max-width:100%}
-.ai-alerts-grid{padding:0 16px 16px;display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.ai-alerts-grid{padding:0 16px 16px;display:grid;grid-template-columns:1fr 1fr;gap:10px;grid-auto-rows:1fr}
 .dash-alerts-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
 .dash-chart-wrap{position:relative;width:100%;padding:0 20px 20px;height:240px}
 .dash-chart-wrap canvas{display:block;max-width:100% !important;width:100% !important}

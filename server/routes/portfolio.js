@@ -1,7 +1,12 @@
 const express = require('express');
+const path = require('path');
+const fs = require('fs');
+const pdfParse = require('pdf-parse');
+const Tesseract = require('tesseract.js');
 const { v4: uuidv4 } = require('uuid');
 const { getDb } = require('../../database/db');
 const auth = require('../middleware/auth');
+const upload = require('../middleware/upload');
 
 const router = express.Router();
 
@@ -156,5 +161,184 @@ router.delete('/liabilities/:id', auth, (req, res) => {
     res.status(500).json({ error: 'Failed to delete liability' });
   }
 });
+
+// POST /api/portfolio/ai-import — Extract assets from uploaded financial statement
+router.post('/ai-import', auth, upload.single('file'), async (req, res) => {
+  let filePath = null;
+  try {
+    const file = req.file;
+    if (!file) return res.status(400).json({ error: 'No file uploaded' });
+
+    filePath = path.join(__dirname, '..', '..', 'uploads', file.filename);
+    let extractedText = '';
+
+    // Try PDF text extraction first
+    if (file.mimetype === 'application/pdf') {
+      try {
+        const dataBuffer = fs.readFileSync(filePath);
+        const pdfData = await pdfParse(dataBuffer);
+        extractedText = pdfData.text || '';
+      } catch (e) {
+        console.error('PDF parse failed:', e.message);
+      }
+    }
+
+    // If no text OR image, try OCR
+    if (!extractedText.trim() && file.mimetype.startsWith('image/')) {
+      try {
+        const worker = await Tesseract.createWorker('eng');
+        const { data } = await worker.recognize(filePath);
+        await worker.terminate();
+        extractedText = data.text || '';
+      } catch (e) {
+        console.error('OCR failed:', e.message);
+      }
+    }
+
+    // Cleanup uploaded file
+    try { fs.unlinkSync(filePath); } catch(e) {}
+    filePath = null;
+
+    if (!extractedText.trim()) {
+      return res.status(400).json({ error: 'Could not extract text from this file. Try a clearer statement.' });
+    }
+
+    const assets = extractAssetsFromText(extractedText);
+
+    if (assets.length === 0) {
+      return res.json({
+        assets: [],
+        totalExtracted: 0,
+        message: 'No recognizable financial assets found in this statement'
+      });
+    }
+
+    // Insert assets
+    const db = getDb();
+    const insertedAssets = [];
+    for (const asset of assets) {
+      const id = uuidv4();
+      try {
+        db.prepare(`
+          INSERT INTO assets (id, family_id, name, subtitle, category, value, currency, institution)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(id, req.user.family_id, asset.name, asset.subtitle, asset.category, asset.value, asset.currency || 'USD', asset.institution);
+        insertedAssets.push({ id, ...asset });
+      } catch (dbErr) {
+        console.error('DB insert failed for asset:', asset.name, dbErr.message);
+      }
+    }
+
+    res.json({
+      assets: insertedAssets,
+      totalExtracted: insertedAssets.length,
+      extractedInstitution: assets[0]?.institution
+    });
+  } catch (err) {
+    console.error('AI Import error:', err.message, err.stack);
+    if (filePath) { try { fs.unlinkSync(filePath); } catch(e) {} }
+    res.status(500).json({ error: 'AI import failed: ' + err.message });
+  }
+});
+
+function extractAssetsFromText(text) {
+  const upper = text.toUpperCase();
+  const assets = [];
+
+  // Institution detection — ORDER MATTERS, check longer names first
+  const institutions = [
+    { keywords: ['CHARLES SCHWAB', 'SCHWAB'], name: 'Charles Schwab' },
+    { keywords: ['FIDELITY'], name: 'Fidelity' },
+    { keywords: ['VANGUARD'], name: 'Vanguard' },
+    { keywords: ['BANK OF AMERICA', 'BOFA'], name: 'Bank of America' },
+    { keywords: ['JPMORGAN CHASE', 'CHASE'], name: 'Chase Bank' },
+    { keywords: ['WELLS FARGO'], name: 'Wells Fargo' },
+    { keywords: ['ROBINHOOD'], name: 'Robinhood' },
+    { keywords: ['MORGAN STANLEY'], name: 'Morgan Stanley' },
+    { keywords: ['E*TRADE', 'ETRADE'], name: 'E*TRADE' },
+    { keywords: ['COINBASE'], name: 'Coinbase' },
+  ];
+
+  let detectedInstitution = 'Imported Institution';
+  for (const inst of institutions) {
+    if (inst.keywords.some(k => upper.includes(k))) {
+      detectedInstitution = inst.name;
+      break;
+    }
+  }
+
+  // Account type detection
+  const accountTypes = [
+    { keywords: ['401(K)', '401K', '401 K'], category: 'equities', label: '401(k)' },
+    { keywords: ['ROTH IRA'], category: 'equities', label: 'Roth IRA' },
+    { keywords: ['TRADITIONAL IRA'], category: 'equities', label: 'IRA' },
+    { keywords: [' IRA '], category: 'equities', label: 'IRA' },
+    { keywords: ['BROKERAGE'], category: 'equities', label: 'Brokerage' },
+    { keywords: ['SAVINGS'], category: 'cash', label: 'Savings' },
+    { keywords: ['CHECKING'], category: 'cash', label: 'Checking' },
+    { keywords: ['MUTUAL FUND'], category: 'equities', label: 'Mutual Fund' },
+  ];
+
+  // Extract value — look for big dollar amounts near key phrases
+  const valuePatterns = [
+    /TOTAL\s+ACCOUNT\s+VALUE[\s:]*\$?\s*([\d,]+(?:\.\d{2})?)/i,
+    /ACCOUNT\s+BALANCE[\s:]*\$?\s*([\d,]+(?:\.\d{2})?)/i,
+    /ENDING\s+BALANCE[\s:]*\$?\s*([\d,]+(?:\.\d{2})?)/i,
+    /CURRENT\s+VALUE[\s:]*\$?\s*([\d,]+(?:\.\d{2})?)/i,
+    /TOTAL\s+BALANCE[\s:]*\$?\s*([\d,]+(?:\.\d{2})?)/i,
+  ];
+
+  let detectedValue = 0;
+  for (const pattern of valuePatterns) {
+    const match = text.match(pattern);
+    if (match) {
+      const val = parseFloat(match[1].replace(/,/g, ''));
+      if (val > 100) {
+        detectedValue = val;
+        break;
+      }
+    }
+  }
+
+  // Fallback — find biggest dollar amount
+  if (detectedValue === 0) {
+    const dollarMatches = [...text.matchAll(/\$\s*([\d,]+(?:\.\d{2})?)/g)]
+      .map(m => parseFloat(m[1].replace(/,/g, '')))
+      .filter(v => v > 1000)
+      .sort((a, b) => b - a);
+    if (dollarMatches.length > 0) detectedValue = dollarMatches[0];
+  }
+
+  // Find first matching account type only (not all — avoid duplicates)
+  let foundType = null;
+  for (const type of accountTypes) {
+    if (type.keywords.some(k => upper.includes(k))) {
+      foundType = type;
+      break;
+    }
+  }
+
+  if (foundType) {
+    assets.push({
+      name: detectedInstitution + ' ' + foundType.label,
+      subtitle: 'AI-imported from statement',
+      category: foundType.category,
+      value: detectedValue || 50000,
+      currency: 'USD',
+      institution: detectedInstitution,
+    });
+  } else if (detectedValue > 0) {
+    assets.push({
+      name: detectedInstitution + ' Account',
+      subtitle: 'AI-imported from statement',
+      category: 'equities',
+      value: detectedValue,
+      currency: 'USD',
+      institution: detectedInstitution,
+    });
+  }
+
+  return assets;
+}
 
 module.exports = router;

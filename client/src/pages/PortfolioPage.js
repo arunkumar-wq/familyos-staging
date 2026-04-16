@@ -2,16 +2,90 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Chart, registerables } from 'chart.js';
 import api from '../utils/api';
 import { fmtK, fmtUSD, assetColor } from '../utils/formatters';
-import { PageHeader, Badge } from '../components/UI';
+import { PageHeader, Badge, Modal } from '../components/UI';
 Chart.register(...registerables);
 
 export default function PortfolioPage() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState('24M');
+  const [showAddAsset, setShowAddAsset] = useState(false);
+  const [showAIImport, setShowAIImport] = useState(false);
+  const [aiImporting, setAiImporting] = useState(false);
+  const [assetForm, setAssetForm] = useState({
+    name: '', subtitle: '', category: 'equities', value: '', currency: 'USD', institution: ''
+  });
+  const [addingAsset, setAddingAsset] = useState(false);
+  const aiFileInputRef = useRef(null);
+  const [aiImportFile, setAiImportFile] = useState(null);
   const lineRef = useRef(); const lineChart = useRef();
 
   useEffect(() => { api.get('/portfolio/summary').then(r => setData(r.data)).catch(()=>{}).finally(() => setLoading(false)); }, []);
+
+  const reloadData = () => {
+    api.get('/portfolio/summary').then(r => setData(r.data)).catch(()=>{});
+  };
+
+  const addAsset = async () => {
+    if (!assetForm.name.trim() || !assetForm.value) return;
+    setAddingAsset(true);
+    try {
+      await api.post('/portfolio/assets', {
+        name: assetForm.name.trim(),
+        subtitle: assetForm.subtitle,
+        category: assetForm.category,
+        value: parseFloat(assetForm.value),
+        currency: assetForm.currency,
+        institution: assetForm.institution
+      });
+      setShowAddAsset(false);
+      setAssetForm({ name: '', subtitle: '', category: 'equities', value: '', currency: 'USD', institution: '' });
+      reloadData();
+    } catch (e) {
+      alert('Failed to add asset: ' + (e.response?.data?.error || e.message));
+    }
+    setAddingAsset(false);
+  };
+
+  const runAIImport = async () => {
+    if (!aiImportFile) {
+      if (aiFileInputRef.current) aiFileInputRef.current.click();
+      return;
+    }
+
+    setAiImporting(true);
+
+    const fd = new FormData();
+    fd.append('file', aiImportFile);
+
+    try {
+      const resp = await api.post('/portfolio/ai-import', fd, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+
+      const { totalExtracted, extractedInstitution } = resp.data;
+
+      setShowAIImport(false);
+      setAiImportFile(null);
+      reloadData();
+
+      if (totalExtracted > 0) {
+        alert('✓ AI imported ' + totalExtracted + ' asset(s) from ' + (extractedInstitution || 'your statement'));
+      } else {
+        alert('Could not detect any assets. Try a clearer statement or add manually.');
+      }
+    } catch (e) {
+      alert('AI Import failed: ' + (e.response?.data?.error || e.message));
+    }
+    setAiImporting(false);
+  };
+
+  const handleAiFileSelect = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setAiImportFile(file);
+    }
+  };
 
   // Net Worth Trend
   useEffect(() => {
@@ -48,7 +122,19 @@ export default function PortfolioPage() {
 
   return (
     <div className="page-inner">
-      <h1 className="dash-greeting-title" style={{ marginBottom: 20 }}>Net Worth &amp; Financial Portfolio</h1>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
+        <h1 className="dash-greeting-title" style={{ margin: 0 }}>Net Worth &amp; Financial Portfolio</h1>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn btn-outline" onClick={() => setShowAIImport(true)} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+            AI Import
+          </button>
+          <button className="btn btn-teal" onClick={() => setShowAddAsset(true)} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 5v14M5 12h14"/></svg>
+            Add Asset
+          </button>
+        </div>
+      </div>
 
       {/* Hero Banner */}
       <div className="nw-banner">
@@ -184,6 +270,121 @@ export default function PortfolioPage() {
           </div>
         </div>
       </div>
+
+      {showAddAsset && (
+        <Modal title="Add New Asset" onClose={() => setShowAddAsset(false)} footer={
+          <>
+            <button className="btn btn-outline" onClick={() => setShowAddAsset(false)}>Cancel</button>
+            <button className="btn btn-teal" onClick={addAsset} disabled={!assetForm.name.trim() || !assetForm.value || addingAsset}>
+              {addingAsset ? 'Adding...' : 'Add Asset'}
+            </button>
+          </>
+        }>
+          <div className="form-group">
+            <label className="form-label">Asset Name</label>
+            <input className="form-input" value={assetForm.name} onChange={e => setAssetForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g., Vanguard Brokerage" autoFocus />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Description</label>
+            <input className="form-input" value={assetForm.subtitle} onChange={e => setAssetForm(f => ({ ...f, subtitle: e.target.value }))} placeholder="e.g., Taxable Stocks + ETFs" />
+          </div>
+          <div className="form-grid-2">
+            <div className="form-group">
+              <label className="form-label">Category</label>
+              <select className="form-select" value={assetForm.category} onChange={e => setAssetForm(f => ({ ...f, category: e.target.value }))}>
+                <option value="equities">Equities / Stocks</option>
+                <option value="real-estate">Real Estate</option>
+                <option value="fixed-income">Fixed Income</option>
+                <option value="cash">Cash / Savings</option>
+                <option value="crypto">Crypto</option>
+                <option value="gold">Gold / Precious Metals</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Value (USD)</label>
+              <input type="number" className="form-input" value={assetForm.value} onChange={e => setAssetForm(f => ({ ...f, value: e.target.value }))} placeholder="100000" min="0" step="1" />
+            </div>
+          </div>
+          <div className="form-group">
+            <label className="form-label">Institution (optional)</label>
+            <input className="form-input" value={assetForm.institution} onChange={e => setAssetForm(f => ({ ...f, institution: e.target.value }))} placeholder="e.g., Charles Schwab, Chase Bank" />
+          </div>
+        </Modal>
+      )}
+
+      {showAIImport && (
+        <Modal title="AI Import Assets" onClose={() => !aiImporting && setShowAIImport(false)} footer={
+          !aiImporting ? (
+            <>
+              <button className="btn btn-outline" onClick={() => { setShowAIImport(false); setAiImportFile(null); }}>Cancel</button>
+              <button className="btn btn-teal" onClick={runAIImport} disabled={!aiImportFile}>
+                {aiImportFile ? 'Import with AI' : 'Upload File First'}
+              </button>
+            </>
+          ) : null
+        }>
+          {!aiImporting ? (
+            <div>
+              <input
+                type="file"
+                ref={aiFileInputRef}
+                onChange={handleAiFileSelect}
+                accept=".pdf,.jpg,.jpeg,.png"
+                style={{ display: 'none' }}
+              />
+
+              <div style={{ padding: '14px 16px', background: '#e0f5f0', border: '1px solid #0a9e9e', borderRadius: 8, marginBottom: 14 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#065f46', marginBottom: 6 }}>🤖 How AI Import Works</div>
+                <div style={{ fontSize: 12, color: '#065f46', lineHeight: 1.6 }}>
+                  Upload a bank or brokerage statement (PDF/image). AI will automatically extract all accounts, holdings, and balances — then add them to your portfolio.
+                </div>
+              </div>
+
+              {!aiImportFile ? (
+                <button
+                  onClick={() => aiFileInputRef.current?.click()}
+                  style={{
+                    width: '100%', padding: '30px 20px', border: '2px dashed var(--border2)',
+                    borderRadius: 12, background: 'var(--surface2)', cursor: 'pointer',
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10,
+                    transition: 'all 150ms'
+                  }}
+                  onMouseOver={(e) => { e.currentTarget.style.borderColor = '#0a9e9e'; e.currentTarget.style.background = '#e0f5f0'; }}
+                  onMouseOut={(e) => { e.currentTarget.style.borderColor = 'var(--border2)'; e.currentTarget.style.background = 'var(--surface2)'; }}
+                >
+                  <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--txt)' }}>Click to upload statement</div>
+                  <div style={{ fontSize: 11, color: 'var(--txt4)' }}>PDF, JPG, or PNG · Max 10MB</div>
+                </button>
+              ) : (
+                <div style={{ padding: '14px 16px', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{ width: 40, height: 40, borderRadius: 8, background: 'var(--accent-light)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--txt)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{aiImportFile.name}</div>
+                    <div style={{ fontSize: 11, color: 'var(--txt4)' }}>{(aiImportFile.size / 1024).toFixed(1)} KB</div>
+                  </div>
+                  <button onClick={() => setAiImportFile(null)} style={{ background: 'none', border: 'none', fontSize: 18, color: 'var(--txt3)', cursor: 'pointer', padding: 4 }}>&times;</button>
+                </div>
+              )}
+
+              <div style={{ fontSize: 11, color: 'var(--txt4)', marginTop: 12, padding: '8px 12px', background: 'var(--surface2)', borderRadius: 6 }}>
+                💡 Tip: Use your most recent monthly statement for the most accurate import
+              </div>
+            </div>
+          ) : (
+            <div style={{ textAlign: 'center', padding: 30 }}>
+              <div style={{ width: 60, height: 60, margin: '0 auto 16px', borderRadius: '50%', background: 'linear-gradient(135deg, #0a9e9e, #3883f6)', display: 'flex', alignItems: 'center', justifyContent: 'center', animation: 'pulse 1.5s ease infinite' }}>
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+              </div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--txt)', marginBottom: 6 }}>AI Analyzing Statement...</div>
+              <div style={{ fontSize: 12, color: 'var(--txt3)' }}>Extracting accounts · Reading balances · Detecting holdings</div>
+            </div>
+          )}
+        </Modal>
+      )}
     </div>
   );
 }
