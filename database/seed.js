@@ -140,7 +140,7 @@ const assets = [
   { name: 'Crypto (Coinbase)', subtitle: 'Digital Assets', category: 'crypto', value: 68800, institution: 'Coinbase' },
 ];
 
-const insertAsset = db.prepare(`INSERT INTO assets (id, family_id, name, subtitle, category, value, institution) VALUES (?, ?, ?, ?, ?, ?, ?)`);
+const insertAsset = db.prepare(`INSERT INTO assets (id, family_id, name, subtitle, category, value, institution, is_seed) VALUES (?, ?, ?, ?, ?, ?, ?, 1)`);
 assets.forEach(a => insertAsset.run(uuidv4(), familyId, a.name, a.subtitle, a.category, a.value, a.institution));
 
 // ─── LIABILITIES (USD) ─────────────────────────────────────────────

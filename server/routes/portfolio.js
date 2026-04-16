@@ -70,7 +70,7 @@ router.post('/assets', auth, (req, res) => {
     const validCategory = VALID_ASSET_CATEGORIES.includes(category) ? category : 'other';
 
     const id = uuidv4();
-    db.prepare(`INSERT INTO assets (id, family_id, name, subtitle, category, value, institution, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`).run(
+    db.prepare(`INSERT INTO assets (id, family_id, name, subtitle, category, value, institution, notes, is_seed) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)`).run(
       id, req.user.family_id, name.slice(0, 255), (subtitle || '').slice(0, 255), validCategory, numValue, (institution || '').slice(0, 255), (notes || '').slice(0, 1000)
     );
     res.status(201).json({ id, name, subtitle, category: validCategory, value: numValue, institution, notes });
@@ -162,6 +162,28 @@ router.delete('/liabilities/:id', auth, (req, res) => {
   }
 });
 
+// POST /api/portfolio/reset — Delete only user-added assets (is_seed=0)
+router.post('/reset', auth, (req, res) => {
+  try {
+    if (req.user.portfolio !== 'full') {
+      return res.status(403).json({ error: 'No permission to modify portfolio' });
+    }
+    const db = getDb();
+    const result = db.prepare(`
+      DELETE FROM assets
+      WHERE family_id = ? AND (is_seed = 0 OR is_seed IS NULL)
+    `).run(req.user.family_id);
+
+    res.json({
+      deleted: result.changes,
+      message: `Deleted ${result.changes} user-added asset(s)`
+    });
+  } catch (err) {
+    console.error('Reset error:', err.message);
+    res.status(500).json({ error: 'Reset failed: ' + err.message });
+  }
+});
+
 // POST /api/portfolio/ai-import — Extract assets from uploaded financial statement
 router.post('/ai-import', auth, upload.single('file'), async (req, res) => {
   let filePath = null;
@@ -220,8 +242,8 @@ router.post('/ai-import', auth, upload.single('file'), async (req, res) => {
       const id = uuidv4();
       try {
         db.prepare(`
-          INSERT INTO assets (id, family_id, name, subtitle, category, value, currency, institution)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          INSERT INTO assets (id, family_id, name, subtitle, category, value, currency, institution, is_seed)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)
         `).run(id, req.user.family_id, asset.name, asset.subtitle, asset.category, asset.value, asset.currency || 'USD', asset.institution);
         insertedAssets.push({ id, ...asset });
       } catch (dbErr) {

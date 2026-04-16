@@ -80,6 +80,7 @@ CREATE TABLE IF NOT EXISTS assets (
   institution TEXT,
   account_no  TEXT,
   notes       TEXT,
+  is_seed     INTEGER DEFAULT 0,
   last_updated TEXT NOT NULL DEFAULT (datetime('now')),
   created_at   TEXT NOT NULL DEFAULT (datetime('now'))
 );

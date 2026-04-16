@@ -22,6 +22,13 @@ function getDb() {
       db.exec("ALTER TABLE users ADD COLUMN avatar_url TEXT DEFAULT NULL");
     }
 
+    // Migrate: add is_seed column to assets if missing, and mark existing rows as seeded
+    const assetCols = db.prepare("PRAGMA table_info(assets)").all().map(c => c.name);
+    if (!assetCols.includes('is_seed')) {
+      db.exec("ALTER TABLE assets ADD COLUMN is_seed INTEGER DEFAULT 0");
+      db.exec("UPDATE assets SET is_seed = 1 WHERE is_seed IS NULL OR is_seed = 0");
+    }
+
     console.log('✅ Database connected:', DB_PATH);
   }
   return db;

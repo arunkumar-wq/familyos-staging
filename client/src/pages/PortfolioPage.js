@@ -18,6 +18,8 @@ export default function PortfolioPage() {
   const [addingAsset, setAddingAsset] = useState(false);
   const aiFileInputRef = useRef(null);
   const [aiImportFile, setAiImportFile] = useState(null);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [resetting, setResetting] = useState(false);
   const lineRef = useRef(); const lineChart = useRef();
 
   useEffect(() => { api.get('/portfolio/summary').then(r => setData(r.data)).catch(()=>{}).finally(() => setLoading(false)); }, []);
@@ -63,21 +65,31 @@ export default function PortfolioPage() {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
 
-      const { totalExtracted, extractedInstitution } = resp.data;
+      const { totalExtracted } = resp.data;
 
       setShowAIImport(false);
       setAiImportFile(null);
       reloadData();
 
-      if (totalExtracted > 0) {
-        alert('✓ AI imported ' + totalExtracted + ' asset(s) from ' + (extractedInstitution || 'your statement'));
-      } else {
+      if (totalExtracted === 0) {
         alert('Could not detect any assets. Try a clearer statement or add manually.');
       }
     } catch (e) {
       alert('AI Import failed: ' + (e.response?.data?.error || e.message));
     }
     setAiImporting(false);
+  };
+
+  const resetPortfolio = async () => {
+    setResetting(true);
+    try {
+      await api.post('/portfolio/reset');
+      setShowResetConfirm(false);
+      reloadData();
+    } catch (e) {
+      alert('Reset failed: ' + (e.response?.data?.error || e.message));
+    }
+    setResetting(false);
   };
 
   const handleAiFileSelect = (e) => {
@@ -125,6 +137,10 @@ export default function PortfolioPage() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
         <h1 className="dash-greeting-title" style={{ margin: 0 }}>Net Worth &amp; Financial Portfolio</h1>
         <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn btn-outline" onClick={() => setShowResetConfirm(true)} style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#dc2626', borderColor: '#fecaca' }} title="Delete all user-added assets (keep demo data)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
+            Reset
+          </button>
           <button className="btn btn-outline" onClick={() => setShowAIImport(true)} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
             AI Import
@@ -309,6 +325,33 @@ export default function PortfolioPage() {
           <div className="form-group">
             <label className="form-label">Institution (optional)</label>
             <input className="form-input" value={assetForm.institution} onChange={e => setAssetForm(f => ({ ...f, institution: e.target.value }))} placeholder="e.g., Charles Schwab, Chase Bank" />
+          </div>
+        </Modal>
+      )}
+
+      {showResetConfirm && (
+        <Modal title="Reset Portfolio" onClose={() => !resetting && setShowResetConfirm(false)} footer={
+          <>
+            <button className="btn btn-outline" onClick={() => setShowResetConfirm(false)} disabled={resetting}>Cancel</button>
+            <button className="btn" style={{ background: '#dc2626', color: '#fff', borderColor: '#dc2626' }} onClick={resetPortfolio} disabled={resetting}>
+              {resetting ? 'Resetting...' : 'Reset Portfolio'}
+            </button>
+          </>
+        }>
+          <div style={{ padding: '14px 16px', background: '#fef3c7', border: '1px solid #f59e0b', borderRadius: 8, marginBottom: 14 }}>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <span style={{ fontSize: 18 }}>⚠️</span>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 14, color: '#92400e', marginBottom: 4 }}>This will delete all your added assets</div>
+                <div style={{ fontSize: 12, color: '#92400e', lineHeight: 1.5 }}>
+                  Assets added via "Add Asset" and "AI Import" will be permanently deleted. Original demo data will remain.
+                </div>
+              </div>
+            </div>
+          </div>
+          <div style={{ fontSize: 13, color: 'var(--txt2)', lineHeight: 1.6 }}>
+            <strong>Deleted:</strong> All user-added assets<br/>
+            <strong>Kept:</strong> Demo portfolio data (Schwab, Apple, TSLA, Bitcoin, Home, etc.)
           </div>
         </Modal>
       )}
