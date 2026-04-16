@@ -134,20 +134,20 @@ export default function PortfolioPage() {
 
   return (
     <div className="page-inner">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
-        <h1 className="dash-greeting-title" style={{ margin: 0 }}>Net Worth &amp; Financial Portfolio</h1>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button className="btn btn-outline" onClick={() => setShowResetConfirm(true)} style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#dc2626', borderColor: '#fecaca' }} title="Delete all user-added assets (keep demo data)">
+      <div className="nw-header-row">
+        <h1 className="dash-greeting-title nw-title" style={{ margin: 0 }}>Net Worth</h1>
+        <div className="nw-actions">
+          <button className="btn btn-outline nw-btn-reset" onClick={() => setShowResetConfirm(true)} title="Delete user-added assets">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
-            Reset
+            <span className="nw-btn-label">Reset</span>
           </button>
-          <button className="btn btn-outline" onClick={() => setShowAIImport(true)} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <button className="btn btn-outline" onClick={() => setShowAIImport(true)} title="AI Import">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
-            AI Import
+            <span className="nw-btn-label">AI Import</span>
           </button>
-          <button className="btn btn-teal" onClick={() => setShowAddAsset(true)} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <button className="btn btn-teal" onClick={() => setShowAddAsset(true)} title="Add Asset">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 5v14M5 12h14"/></svg>
-            Add Asset
+            <span className="nw-btn-label">Add Asset</span>
           </button>
         </div>
       </div>

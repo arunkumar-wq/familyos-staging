@@ -34,7 +34,8 @@
       "Bash(rm -f .graphify_detect.json .graphify_extract.json .graphify_ast.json .graphify_semantic.json .graphify_analysis.json .graphify_labels.json)",
       "Bash(rm -f graphify-out/.needs_update)",
       "Bash(findstr :5000)",
-      "Bash(npm uninstall *)"
+      "Bash(npm uninstall *)",
+      "Bash(xxd)"
     ]
   }
 }
