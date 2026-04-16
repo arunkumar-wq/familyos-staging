@@ -69,6 +69,7 @@ export default function DocumentsPage({ navigate }) {
   const [activeMenu, setActiveMenu] = useState(null);
   const [hoverDoc, setHoverDoc] = useState(null);
   const [hoverPos, setHoverPos] = useState({ x: 0, y: 0 });
+  const [scores, setScores] = useState(null);
   const hoverTimeout = useRef(null);
   const fileInputRef = useRef();
   const videoRef = useRef(null);
@@ -82,6 +83,9 @@ export default function DocumentsPage({ navigate }) {
   useEffect(() => { const t = setTimeout(() => setDebouncedSearch(search), 350); return () => clearTimeout(t); }, [search]);
   useEffect(() => { api.get('/family/members').then(r => { setMembers(r.data); }).catch(()=>{}); }, []);
   useEffect(() => { loadDocs(); }, [cat, debouncedSearch, statusFilter]);
+  useEffect(() => {
+    api.get('/documents/scores').then(r => setScores(r.data)).catch(err => console.error('Scores fetch failed:', err));
+  }, []);
 
   const loadDocs = async () => {
     setLoading(true);
@@ -416,7 +420,13 @@ export default function DocumentsPage({ navigate }) {
         </div>
       </div>
 
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: 12, gap: 12, flexWrap: 'wrap' }}>
+        {scores && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 14px', background: scores.overallScore >= 80 ? '#d1fae5' : scores.overallScore >= 60 ? '#fef3c7' : '#fee2e2', borderRadius: 20, fontSize: 12, fontWeight: 700, color: scores.overallScore >= 80 ? '#065f46' : scores.overallScore >= 60 ? '#92400e' : '#991b1b' }} title="Document completeness across all family members">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><polyline points="9 15 11 17 15 13"/></svg>
+            <span>Overall Document Score: {scores.overallScore}%</span>
+          </div>
+        )}
         <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', overflow: 'hidden' }}>
           <button onClick={() => setViewMode('card')} style={{ padding: '6px 10px', border: 'none', background: viewMode === 'card' ? 'var(--accent)' : 'var(--surface)', cursor: 'pointer', display: 'flex', alignItems: 'center' }} title="Card view">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={viewMode === 'card' ? '#fff' : 'var(--txt3)'} strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
@@ -481,7 +491,7 @@ export default function DocumentsPage({ navigate }) {
                 {Object.entries(grouped).map(([name, group]) => (
                   <React.Fragment key={name}>
                     <tr><td colSpan={6} style={{ padding: 0 }}>
-                      <div className="doc-member-row">
+                      <div className="doc-member-row" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         {group.avatar_url ? (
                           <img src={group.avatar_url} alt={name} style={{ width: 24, height: 24, borderRadius: '50%', objectFit: 'cover', background: group.color || '#e5e7eb' }} />
                         ) : (
@@ -489,7 +499,20 @@ export default function DocumentsPage({ navigate }) {
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                           </div>
                         )}
-                        {name}
+                        <span>{name}</span>
+                        {(() => {
+                          const ms = scores?.memberScores?.find(x => x.memberName === name);
+                          if (!ms) return null;
+                          const color = ms.score >= 80 ? '#059669' : ms.score >= 60 ? '#d97706' : '#dc2626';
+                          const bg = ms.score >= 80 ? '#d1fae5' : ms.score >= 60 ? '#fef3c7' : '#fee2e2';
+                          const tooltip = ms.missing.length > 0 ? 'Missing: ' + ms.missing.join(', ') : 'All essential documents present';
+                          return (
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 10, background: bg, color, marginLeft: 8 }} title={tooltip}>
+                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+                              Score: {ms.score}%
+                            </span>
+                          );
+                        })()}
                       </div>
                     </td></tr>
                     {group.docs.map(d => {
@@ -557,6 +580,19 @@ export default function DocumentsPage({ navigate }) {
                       )}
                       <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--txt)' }}>{name}</span>
                       <span style={{ fontSize: 11, color: 'var(--txt4)' }}>({group.docs.length} docs)</span>
+                      {(() => {
+                        const ms = scores?.memberScores?.find(x => x.memberName === name);
+                        if (!ms) return null;
+                        const color = ms.score >= 80 ? '#059669' : ms.score >= 60 ? '#d97706' : '#dc2626';
+                        const bg = ms.score >= 80 ? '#d1fae5' : ms.score >= 60 ? '#fef3c7' : '#fee2e2';
+                        const tooltip = ms.missing.length > 0 ? 'Missing: ' + ms.missing.join(', ') : 'All essential documents present';
+                        return (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 10, background: bg, color, marginLeft: 8 }} title={tooltip}>
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+                            Score: {ms.score}%
+                          </span>
+                        );
+                      })()}
                     </div>
                     {group.docs.map(d => {
                       const ai = parseAi(d);

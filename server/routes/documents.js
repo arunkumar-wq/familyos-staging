@@ -75,6 +75,88 @@ router.get('/stats', auth, (req, res) => {
   }
 });
 
+// GET /api/documents/scores — Calculate document scores per member + overall
+router.get('/scores', auth, (req, res) => {
+  try {
+    const db = getDb();
+    const fid = req.user.family_id;
+
+    const members = db.prepare(`SELECT id, first_name, last_name, role FROM users WHERE family_id = ? AND is_active = 1`).all(fid);
+
+    const essentialDocs = [
+      { keywords: ['passport'], points: 20, label: 'Passport' },
+      { keywords: ['license', 'driver'], points: 15, label: 'Driver License' },
+      { keywords: ['birth', 'certificate'], points: 15, label: 'Birth Certificate' },
+      { keywords: ['ssn', 'social security'], points: 15, label: 'SSN' },
+      { keywords: ['insurance', 'health'], points: 15, label: 'Health Insurance' },
+      { keywords: ['medical', 'vaccination'], points: 10, label: 'Medical Records' },
+      { keywords: ['tax', 'w-2', 'w2', '1099'], points: 10, label: 'Tax Documents' },
+    ];
+
+    const memberScores = members.map(m => {
+      const docs = db.prepare(`SELECT name, category, status, expiry_date FROM documents WHERE owner_id = ? AND is_deleted = 0`).all(m.id);
+
+      let earnedPoints = 0;
+      let totalPoints = 0;
+      const missing = [];
+      const expired = [];
+
+      essentialDocs.forEach(essential => {
+        totalPoints += essential.points;
+        const hasDoc = docs.find(d => {
+          const lower = (d.name || '').toLowerCase();
+          return essential.keywords.some(k => lower.includes(k));
+        });
+
+        if (hasDoc) {
+          if (hasDoc.status === 'expired') {
+            earnedPoints += essential.points * 0.3;
+            expired.push(essential.label);
+          } else if (hasDoc.status === 'expiring') {
+            earnedPoints += essential.points * 0.7;
+          } else {
+            earnedPoints += essential.points;
+          }
+        } else {
+          missing.push(essential.label);
+        }
+      });
+
+      const score = totalPoints > 0 ? Math.round((earnedPoints / totalPoints) * 100) : 0;
+
+      return {
+        memberId: m.id,
+        memberName: m.first_name + ' ' + m.last_name,
+        role: m.role,
+        score,
+        totalDocs: docs.length,
+        missing,
+        expired,
+      };
+    });
+
+    const overallScore = memberScores.length > 0
+      ? Math.round(memberScores.reduce((s, m) => s + m.score, 0) / memberScores.length)
+      : 0;
+
+    const totalMissing = memberScores.reduce((s, m) => s + m.missing.length, 0);
+    const totalExpired = memberScores.reduce((s, m) => s + m.expired.length, 0);
+
+    res.json({
+      overallScore,
+      memberScores,
+      summary: {
+        totalMembers: members.length,
+        totalMissing,
+        totalExpired,
+      }
+    });
+  } catch (err) {
+    console.error('GET /documents/scores error:', err.message);
+    res.status(500).json({ error: 'Failed to calculate scores' });
+  }
+});
+
 // GET /api/documents/:id/download — MUST be before /:id to avoid route conflict
 router.get('/:id/download', auth, (req, res) => {
   try {
