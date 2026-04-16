@@ -242,11 +242,26 @@ router.post('/analyze', auth, upload.single('file'), async (req, res) => {
       ocrConfidence: ocrResult.confidence,
     });
   } catch (err) {
-    console.error('Analyze error:', err.message);
+    console.error('Analyze error:', err.message, err.stack);
     if (req.file) {
       try { fs.unlinkSync(path.join(__dirname, '..', '..', 'uploads', req.file.filename)); } catch (e) {}
     }
-    res.status(500).json({ error: 'Analysis failed' });
+    // Return graceful fallback instead of 500 error
+    res.json({
+      type: 'Unknown Document',
+      category: 'other',
+      confidence: 0,
+      fields: [],
+      expiryDate: null,
+      detectedName: null,
+      matchedMemberId: null,
+      matchedMemberName: null,
+      nameWarning: null,
+      ocrText: '',
+      ocrTextLength: 0,
+      ocrConfidence: 0,
+      error: 'OCR could not process this image. Please select member manually.'
+    });
   }
 });
 
@@ -280,26 +295,37 @@ router.post('/upload', auth, upload.single('file'), async (req, res) => {
     // Validate name length
     const docName = (name || file.originalname).slice(0, 255);
 
-    // Real OCR extraction
+    // Real OCR extraction — wrapped in try-catch so OCR failure doesn't break upload
     const uploadsRoot = path.join(__dirname, '..', '..', 'uploads');
     const fullPath = path.join(uploadsRoot, file.filename);
-    const ocr = await ocrExtract(fullPath, file.mimetype);
-    const parsed = parseDocumentFields(ocr.text, file.originalname);
+    let ocr = { text: '', confidence: 0 };
+    let parsed = { type: 'Unknown Document', fields: [], expiryDate: null, detectedName: null, category: 'other', confidence: 0 };
+    try {
+      ocr = await ocrExtract(fullPath, file.mimetype);
+      parsed = parseDocumentFields(ocr.text, file.originalname);
+    } catch (ocrErr) {
+      console.error('OCR/parse failed during upload (non-fatal):', ocrErr.message);
+    }
 
     // If OCR produced no text at all, fall back to legacy simulated analysis
     let aiSummary;
-    if (ocr.text && ocr.text.trim().length > 10) {
-      aiSummary = {
-        type: parsed.type,
-        confidence: parsed.confidence,
-        fields: parsed.fields,
-        expiryDate: parsed.expiryDate,
-        ocrConfidence: ocr.confidence,
-        ocrTextLength: ocr.text.length,
-      };
-    } else {
-      const fallback = simulateAIAnalysis(file.originalname, validCategory, fullPath);
-      aiSummary = { ...fallback, ocrConfidence: 0, ocrTextLength: 0 };
+    try {
+      if (ocr.text && ocr.text.trim().length > 10) {
+        aiSummary = {
+          type: parsed.type || 'Unknown Document',
+          confidence: parsed.confidence || 0,
+          fields: Array.isArray(parsed.fields) ? parsed.fields : [],
+          expiryDate: parsed.expiryDate || null,
+          ocrConfidence: ocr.confidence || 0,
+          ocrTextLength: ocr.text.length,
+        };
+      } else {
+        const fallback = simulateAIAnalysis(file.originalname, validCategory, fullPath) || {};
+        aiSummary = { ...fallback, fields: fallback.fields || [], ocrConfidence: 0, ocrTextLength: 0 };
+      }
+    } catch (summaryErr) {
+      console.error('aiSummary build failed (non-fatal):', summaryErr.message);
+      aiSummary = { type: 'Document', fields: [], confidence: 0, ocrConfidence: 0, ocrTextLength: 0 };
     }
 
     // Auto-match owner with family members using OCR-extracted name
@@ -469,7 +495,8 @@ router.post('/upload', auth, upload.single('file'), async (req, res) => {
     });
   } catch (err) {
     console.error('POST /documents/upload error:', err.message);
-    res.status(500).json({ error: 'Failed to upload document' });
+    console.error('Stack:', err.stack);
+    res.status(500).json({ error: 'Upload failed: ' + (err.message || 'Unknown error') });
   }
 });
 

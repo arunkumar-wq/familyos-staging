@@ -167,7 +167,11 @@ export default function DocumentsPage({ navigate }) {
         setUploadForm(f => ({ ...f, category: resp.data.aiSummary.category }));
       }
       loadDocs();
-    } catch (e) { setUploadError(e.response?.data?.error || 'Upload failed'); }
+    } catch (e) {
+      const errMsg = e.response?.data?.error || e.message || 'Upload failed';
+      console.error('Upload error:', e);
+      setUploadError(errMsg);
+    }
     finally { setUploading(false); }
   };
 
