@@ -77,6 +77,8 @@ export default function DocumentsPage({ navigate }) {
   const [showAddCat, setShowAddCat] = useState(false);
   const [newCatLabel, setNewCatLabel] = useState('');
   const [newCatIcon, setNewCatIcon] = useState('📂');
+  const [editingDoc, setEditingDoc] = useState(null);
+  const [editForm, setEditForm] = useState({ name: '', category: '', expiry_date: '', notes: '', owner_id: '' });
   const hoverTimeout = useRef(null);
   const fileInputRef = useRef();
   const videoRef = useRef(null);
@@ -390,6 +392,10 @@ export default function DocumentsPage({ navigate }) {
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
             View
           </button>
+          <button onClick={() => { setActiveMenu(null); openEditModal(d); }} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '8px 14px', border: 'none', background: 'none', cursor: 'pointer', fontSize: 13, color: 'var(--txt)', textAlign: 'left' }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            Edit
+          </button>
           <button onClick={() => { setActiveMenu(null); downloadDoc(d); }} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '8px 14px', border: 'none', background: 'none', cursor: 'pointer', fontSize: 13, color: 'var(--txt)', textAlign: 'left' }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             Download
@@ -417,6 +423,35 @@ export default function DocumentsPage({ navigate }) {
     setShowAddCat(false);
     setNewCatLabel('');
     setNewCatIcon('📂');
+  };
+
+  const openEditModal = (d) => {
+    setEditingDoc(d);
+    setEditForm({
+      name: d.name || '',
+      category: d.category || 'other',
+      expiry_date: d.expiry_date ? d.expiry_date.split('T')[0] : '',
+      notes: d.notes || '',
+      owner_id: d.owner_id || ''
+    });
+  };
+
+  const saveEditedDoc = async () => {
+    if (!editingDoc) return;
+    try {
+      await api.put('/documents/' + editingDoc.id, {
+        name: editForm.name.trim(),
+        category: editForm.category,
+        expiry_date: editForm.expiry_date || null,
+        notes: editForm.notes,
+        owner_id: editForm.owner_id || undefined
+      });
+      setEditingDoc(null);
+      loadDocs();
+      api.get('/documents/scores').then(r => setScores(r.data)).catch(() => {});
+    } catch (e) {
+      alert('Failed to update: ' + (e.response?.data?.error || e.message));
+    }
   };
 
   const deleteCustomCategory = (id) => {
@@ -1167,6 +1202,46 @@ export default function DocumentsPage({ navigate }) {
         </div>
       )}
 
+      {editingDoc && (
+        <Modal title="Edit Document" onClose={() => setEditingDoc(null)} footer={
+          <>
+            <button className="btn btn-outline" onClick={() => setEditingDoc(null)}>Cancel</button>
+            <button className="btn btn-teal" onClick={saveEditedDoc} disabled={!editForm.name.trim()}>Save Changes</button>
+          </>
+        }>
+          <div className="form-group">
+            <label className="form-label">Document Name</label>
+            <input className="form-input" value={editForm.name} onChange={(e) => setEditForm(f => ({ ...f, name: e.target.value }))} autoFocus />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Category</label>
+            <select className="form-select" value={editForm.category} onChange={(e) => setEditForm(f => ({ ...f, category: e.target.value }))}>
+              {allCats.filter(c => c.id !== 'all').map(c => (
+                <option key={c.id} value={c.id}>{c.icon} {c.label}</option>
+              ))}
+            </select>
+          </div>
+          <div className="form-grid-2">
+            <div className="form-group">
+              <label className="form-label">Owner</label>
+              <select className="form-select" value={editForm.owner_id} onChange={(e) => setEditForm(f => ({ ...f, owner_id: e.target.value }))}>
+                {members.map(m => (
+                  <option key={m.id} value={m.id}>{m.first_name} {m.last_name}</option>
+                ))}
+              </select>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Expiry Date</label>
+              <input type="date" className="form-input" value={editForm.expiry_date} onChange={(e) => setEditForm(f => ({ ...f, expiry_date: e.target.value }))} />
+            </div>
+          </div>
+          <div className="form-group">
+            <label className="form-label">Notes</label>
+            <textarea className="form-input" value={editForm.notes} onChange={(e) => setEditForm(f => ({ ...f, notes: e.target.value }))} rows={3} />
+          </div>
+        </Modal>
+      )}
+
       {showAddCat && (
         <Modal title="Add New Category" onClose={() => setShowAddCat(false)} footer={
           <>
@@ -1196,9 +1271,6 @@ export default function DocumentsPage({ navigate }) {
                 >{emoji}</button>
               ))}
             </div>
-          </div>
-          <div style={{ fontSize: 11, color: 'var(--txt4)', padding: '8px 12px', background: 'var(--surface2)', borderRadius: 8 }}>
-            💡 Custom categories are saved locally. You can assign documents to them when uploading or editing.
           </div>
         </Modal>
       )}

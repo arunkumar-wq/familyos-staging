@@ -607,7 +607,7 @@ router.put('/:id', auth, (req, res) => {
     }
 
     // Validate category and status
-    const validCategory = category && VALID_CATEGORIES.includes(category) ? category : undefined;
+    const validCategory = category && (VALID_CATEGORIES.includes(category) || category.startsWith('custom_')) ? category : undefined;
     const validStatus = status && VALID_STATUSES.includes(status) ? status : undefined;
 
     // Validate owner_id belongs to same family
