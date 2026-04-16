@@ -79,6 +79,7 @@ export default function DocumentsPage({ navigate }) {
   const [newCatIcon, setNewCatIcon] = useState('📂');
   const [editingDoc, setEditingDoc] = useState(null);
   const [editForm, setEditForm] = useState({ name: '', category: '', expiry_date: '', notes: '', owner_id: '' });
+  const [duplicateInfo, setDuplicateInfo] = useState(null);
   const hoverTimeout = useRef(null);
   const fileInputRef = useRef();
   const videoRef = useRef(null);
@@ -131,6 +132,10 @@ export default function DocumentsPage({ navigate }) {
       const r = resp.data;
       setAiResults(r);
 
+      if (r.duplicate) {
+        setDuplicateInfo(r.duplicate);
+      }
+
       if (r.matchedMemberId) setSelectedMember(r.matchedMemberId);
       if (r.category && r.category !== 'other') {
         setUploadForm(f => ({ ...f, category: r.category }));
@@ -163,6 +168,7 @@ export default function DocumentsPage({ navigate }) {
     const fd = new FormData();
     fd.append('file', pendingFile); fd.append('name', uploadForm.name);
     fd.append('category', uploadForm.category); fd.append('notes', uploadForm.notes);
+    if (duplicateInfo) fd.append('replaceDuplicate', 'true');
     fd.append('ownerId', selectedMember);
     try {
       const resp = await api.post('/documents/upload', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
@@ -317,6 +323,7 @@ export default function DocumentsPage({ navigate }) {
     setAiResults(null);
     setAnalyzing(false);
     setUploadStep(1);
+    setDuplicateInfo(null);
   };
 
   const parseAi = (d) => {
@@ -805,6 +812,22 @@ export default function DocumentsPage({ navigate }) {
 
           {uploadStep === 2 && (
             <div>
+              {duplicateInfo && (
+                <div style={{ marginBottom: 14, padding: '12px 14px', background: '#fef3c7', border: '1px solid #f59e0b', borderRadius: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                    <span style={{ fontSize: 18 }}>⚠️</span>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 700, fontSize: 13, color: '#92400e', marginBottom: 4 }}>Duplicate Detected</div>
+                      <div style={{ fontSize: 12, color: '#92400e' }}>
+                        "{duplicateInfo.name}" already exists (uploaded {duplicateInfo.created_at ? new Date(duplicateInfo.created_at).toLocaleDateString() : '—'})
+                      </div>
+                      <div style={{ fontSize: 11, color: '#92400e', marginTop: 6 }}>
+                        Clicking Upload will <strong>replace</strong> the old document.
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
               {aiResults && aiResults.type && aiResults.type !== 'Document' && aiResults.type !== 'Unknown Document' && (
                 <div style={{ marginBottom: 12, padding: '10px 14px', background: '#d1fae5', border: '1px solid #10b981', borderRadius: 8, fontSize: 13, color: '#065f46' }}>
                   🤖 <strong>AI Detected: {aiResults.type}</strong>

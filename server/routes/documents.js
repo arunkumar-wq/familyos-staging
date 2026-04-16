@@ -309,6 +309,22 @@ router.post('/analyze', auth, upload.single('file'), async (req, res) => {
       });
     }
 
+    // Check for duplicate document (same member + similar name)
+    let duplicateDoc = null;
+    if (matchedMember) {
+      const possibleName = parsed.type || file.originalname.replace(/\.[^.]+$/, '');
+      duplicateDoc = db.prepare(`
+        SELECT id, name, created_at FROM documents
+        WHERE family_id = ? AND owner_id = ? AND is_deleted = 0
+        AND (LOWER(name) LIKE LOWER(?) OR LOWER(name) LIKE LOWER(?) OR LOWER(original_name) LIKE LOWER(?))
+        LIMIT 1
+      `).get(req.user.family_id, matchedMember.id,
+        '%' + possibleName + '%',
+        '%' + file.originalname.replace(/\.[^.]+$/, '') + '%',
+        '%' + file.originalname + '%'
+      );
+    }
+
     res.json({
       type: parsed.type,
       category: parsed.category,
@@ -319,6 +335,7 @@ router.post('/analyze', auth, upload.single('file'), async (req, res) => {
       matchedMemberId: matchedMember ? matchedMember.id : null,
       matchedMemberName: matchedMember ? matchedMember.first_name + ' ' + matchedMember.last_name : null,
       nameWarning: nameWarning,
+      duplicate: duplicateDoc,
       ocrText: ocrResult.text.substring(0, 500),
       ocrTextLength: ocrResult.text.length,
       ocrConfidence: ocrResult.confidence,
@@ -483,6 +500,40 @@ router.post('/upload', auth, upload.single('file'), async (req, res) => {
         if (diffDays < 0) status = 'expired';
         else if (diffDays <= 90) status = 'expiring';
       }
+    }
+
+    // Duplicate detection: same name + same owner + same category
+    const duplicate = db.prepare(`
+      SELECT id, name, file_path, created_at FROM documents
+      WHERE family_id = ? AND owner_id = ? AND is_deleted = 0
+      AND (LOWER(name) = LOWER(?) OR LOWER(name) = LOWER(?))
+    `).get(req.user.family_id, resolvedOwnerId, docName, file.originalname.replace(/\.[^.]+$/, ''));
+
+    const replaceDuplicate = req.body.replaceDuplicate === 'true' || req.body.replaceDuplicate === true;
+
+    if (duplicate && !replaceDuplicate) {
+      try { fs.unlinkSync(fullPath); } catch(e) {}
+      return res.status(409).json({
+        error: 'duplicate',
+        message: 'A similar document already exists',
+        existing: {
+          id: duplicate.id,
+          name: duplicate.name,
+          created_at: duplicate.created_at
+        }
+      });
+    }
+
+    if (duplicate && replaceDuplicate) {
+      db.prepare(`UPDATE documents SET is_deleted = 1, updated_at = datetime('now') WHERE id = ?`).run(duplicate.id);
+      if (duplicate.file_path) {
+        const oldPath = path.join(__dirname, '..', '..', 'uploads', duplicate.file_path);
+        try { fs.unlinkSync(oldPath); } catch(e) {}
+      }
+      db.prepare(`INSERT INTO audit_log (id, family_id, user_id, action, entity_type, entity_id, meta) VALUES (?, ?, ?, ?, ?, ?, ?)`).run(
+        uuidv4(), req.user.family_id, req.user.id, 'document.replaced', 'documents', duplicate.id,
+        JSON.stringify({ replacedBy: docName })
+      );
     }
 
     const id = uuidv4();
