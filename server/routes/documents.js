@@ -697,6 +697,39 @@ function parseDocumentFields(ocrText, filename) {
   let detectedName = null;
   let category = 'other';
 
+  // Flexible date finder — matches many formats
+  const findDate = (text, keywords) => {
+    const patterns = [
+      // DD/MM/YYYY or DD-MM-YYYY or MM/DD/YYYY
+      /(\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4})/,
+      // DD MMM YYYY (22 JUL 1990)
+      /(\d{1,2}\s+[A-Z]{3,}\s+\d{4})/i,
+      // MMM DD, YYYY (Jul 22, 1990)
+      /([A-Z]{3,}\s+\d{1,2},?\s+\d{4})/i,
+      // YYYY-MM-DD
+      /(\d{4}[\/\-]\d{1,2}[\/\-]\d{1,2})/,
+    ];
+
+    // First try near keywords (e.g., "DOB: 22/07/1990")
+    for (const kw of keywords) {
+      const kwPattern = new RegExp(kw + '[\\s:]*([\\d/\\-\\.]+\\s*[A-Z]*\\s*\\d{0,4})', 'i');
+      const m = text.match(kwPattern);
+      if (m) {
+        for (const p of patterns) {
+          const dm = m[0].match(p);
+          if (dm) return dm[1];
+        }
+      }
+    }
+
+    // Fallback: find any date in text
+    for (const p of patterns) {
+      const m = text.match(p);
+      if (m) return m[1];
+    }
+    return null;
+  };
+
   // Filter out garbage OCR text that isn't a real name
   const isValidName = (name) => {
     if (!name) return false;
@@ -723,10 +756,12 @@ function parseDocumentFields(ocrText, filename) {
     type = 'US Passport';
     category = 'identity';
     const num = text.match(/(?:PASSPORT\s*(?:NO|NUMBER|#)?\.?\s*[:.]?\s*)(\d{8,9})/i) || text.match(/\b(\d{9})\b/);
-    const expiry = text.match(/(?:EXPIR|EXP|DATE OF EXPIR)[A-Z\s]*[:.]?\s*(\d{2}[\/-]\d{2}[\/-]\d{4}|\d{2}\s+[A-Z]{3}\s+\d{4})/i);
+    const expiryMatch = findDate(text, ['EXPIR', 'EXP', 'DATE OF EXPIR', 'EXPIRY', 'VALID UNTIL']);
+    const dobMatch = findDate(text, ['DATE OF BIRTH', 'DOB', 'BIRTH', 'BORN']);
+    const expiry = expiryMatch ? [null, expiryMatch] : null;
+    const dob = dobMatch ? [null, dobMatch] : null;
     const name = text.match(/(?:SURNAME|LAST NAME|NAME)[:\s]*([A-Z]+)/);
     const given = text.match(/(?:GIVEN|FIRST)[A-Z\s]*[:\s]*([A-Z]+)/);
-    const dob = text.match(/(?:DATE OF BIRTH|DOB|BIRTH)[:\s]*(\d{2}[\/-]\d{2}[\/-]\d{4}|\d{2}\s+[A-Z]{3}\s+\d{4})/i);
 
     fields = [
       { key: 'Passport Number', value: num ? num[1] : 'Not detected', confidence: num ? 0.96 : 0.40 },
@@ -742,10 +777,12 @@ function parseDocumentFields(ocrText, filename) {
     type = 'US Driver License';
     category = 'identity';
     const dlNum = text.match(/(?:DL|LICENSE|LIC)[\s#.:]*([A-Z]?\d{7,8})/i) || text.match(/\b([A-Z]\d{7})\b/);
-    const expiry = text.match(/(?:EXP|EXPIR)[A-Z\s]*[:.]?\s*(\d{2}[\/-]\d{2}[\/-]\d{4})/i);
+    const expiryMatch = findDate(text, ['EXP', 'EXPIR', 'EXPIRY']);
+    const dobMatch = findDate(text, ['DOB', 'BIRTH', 'DATE OF BIRTH']);
+    const expiry = expiryMatch ? [null, expiryMatch] : null;
+    const dob = dobMatch ? [null, dobMatch] : null;
     const name = text.match(/(?:LN|LAST|SURNAME)[:\s]*([A-Z]+)/);
     const given = text.match(/(?:FN|FIRST|GIVEN)[:\s]*([A-Z]+)/);
-    const dob = text.match(/(?:DOB|BIRTH)[:\s]*(\d{2}[\/-]\d{2}[\/-]\d{4})/i);
     const state = text.match(/(CALIFORNIA|TEXAS|NEW YORK|FLORIDA|ILLINOIS|OHIO|GEORGIA|MICHIGAN|ARIZONA|WASHINGTON)/i);
 
     fields = [
@@ -763,7 +800,8 @@ function parseDocumentFields(ocrText, filename) {
     category = 'identity';
     const certNum = text.match(/(?:CERTIFICATE|CERT)[\s#.:NO]*(\d{4}[\-]?[A-Z]*[\-]?\d+)/i) || text.match(/\b(\d{4}-[A-Z]{2}-\d+)\b/);
     const name = text.match(/(?:CHILD|NAME)[:\s]*([A-Z]+\s+[A-Z]+)/);
-    const dob = text.match(/(?:DATE OF BIRTH|BIRTH)[:\s]*([\w]+\s+\d{1,2},?\s+\d{4}|\d{2}[\/-]\d{2}[\/-]\d{4})/i);
+    const dobMatch = findDate(text, ['DATE OF BIRTH', 'BIRTH', 'BORN']);
+    const dob = dobMatch ? [null, dobMatch] : null;
     const place = text.match(/(?:PLACE|CITY)[:\s]*([A-Z\s,]+(?:CALIFORNIA|CA|TEXAS|TX|NEW YORK|NY))/i);
 
     fields = [
@@ -808,7 +846,8 @@ function parseDocumentFields(ocrText, filename) {
     type = 'Insurance Policy';
     category = 'insurance';
     const policyNum = text.match(/(?:POLICY)[\s#.:NO]*([A-Z0-9\-]+)/i);
-    const expiry = text.match(/(?:EXP|EXPIR|VALID UNTIL)[A-Z\s]*[:.]?\s*(\d{2}[\/-]\d{2}[\/-]\d{4})/i);
+    const expiryMatch = findDate(text, ['EXP', 'EXPIR', 'VALID UNTIL', 'EXPIRY']);
+    const expiry = expiryMatch ? [null, expiryMatch] : null;
     fields = [
       { key: 'Policy Number', value: policyNum ? policyNum[1] : 'Not detected', confidence: policyNum ? 0.93 : 0.40 },
       { key: 'Expiry Date', value: expiry ? expiry[1] : 'Not detected', confidence: expiry ? 0.95 : 0.40 },
