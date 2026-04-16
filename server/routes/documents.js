@@ -697,36 +697,28 @@ function parseDocumentFields(ocrText, filename) {
   let detectedName = null;
   let category = 'other';
 
-  // Flexible date finder — matches many formats
   const findDate = (text, keywords) => {
     const patterns = [
-      // DD/MM/YYYY or DD-MM-YYYY or MM/DD/YYYY
       /(\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4})/,
-      // DD MMM YYYY (22 JUL 1990)
       /(\d{1,2}\s+[A-Z]{3,}\s+\d{4})/i,
-      // MMM DD, YYYY (Jul 22, 1990)
       /([A-Z]{3,}\s+\d{1,2},?\s+\d{4})/i,
-      // YYYY-MM-DD
       /(\d{4}[\/\-]\d{1,2}[\/\-]\d{1,2})/,
     ];
 
-    // First try near keywords (e.g., "DOB: 22/07/1990")
+    // Only find date near specific keywords — no generic fallback
     for (const kw of keywords) {
-      const kwPattern = new RegExp(kw + '[\\s:]*([\\d/\\-\\.]+\\s*[A-Z]*\\s*\\d{0,4})', 'i');
-      const m = text.match(kwPattern);
-      if (m) {
+      // Look for keyword followed by date within 30 chars
+      const kwRegex = new RegExp(kw + '[\\s:.]{0,5}([^\\n]{0,30})', 'i');
+      const kwMatch = text.match(kwRegex);
+      if (kwMatch) {
+        const afterKeyword = kwMatch[1];
         for (const p of patterns) {
-          const dm = m[0].match(p);
-          if (dm) return dm[1];
+          const dm = afterKeyword.match(p);
+          if (dm) return dm[1].trim();
         }
       }
     }
 
-    // Fallback: find any date in text
-    for (const p of patterns) {
-      const m = text.match(p);
-      if (m) return m[1];
-    }
     return null;
   };
 
