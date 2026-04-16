@@ -70,6 +70,13 @@ export default function DocumentsPage({ navigate }) {
   const [hoverDoc, setHoverDoc] = useState(null);
   const [hoverPos, setHoverPos] = useState({ x: 0, y: 0 });
   const [scores, setScores] = useState(null);
+  const [customCats, setCustomCats] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('linio_custom_cats') || '[]'); }
+    catch { return []; }
+  });
+  const [showAddCat, setShowAddCat] = useState(false);
+  const [newCatLabel, setNewCatLabel] = useState('');
+  const [newCatIcon, setNewCatIcon] = useState('📂');
   const hoverTimeout = useRef(null);
   const fileInputRef = useRef();
   const videoRef = useRef(null);
@@ -397,6 +404,29 @@ export default function DocumentsPage({ navigate }) {
     </div>
   );
 
+  const allCats = [...CATS, ...customCats];
+
+  const addCustomCategory = () => {
+    const label = newCatLabel.trim();
+    if (!label) return;
+    const id = 'custom_' + label.toLowerCase().replace(/[^a-z0-9]/g, '_') + '_' + Date.now();
+    const newCat = { id, label, icon: newCatIcon || '📂', custom: true };
+    const updated = [...customCats, newCat];
+    setCustomCats(updated);
+    localStorage.setItem('linio_custom_cats', JSON.stringify(updated));
+    setShowAddCat(false);
+    setNewCatLabel('');
+    setNewCatIcon('📂');
+  };
+
+  const deleteCustomCategory = (id) => {
+    if (!window.confirm('Delete this category? Documents in this category will move to Other.')) return;
+    const updated = customCats.filter(c => c.id !== id);
+    setCustomCats(updated);
+    localStorage.setItem('linio_custom_cats', JSON.stringify(updated));
+    if (cat === id) setCat('all');
+  };
+
   return (
     <div className="page-inner">
       {toast && (
@@ -450,12 +480,15 @@ export default function DocumentsPage({ navigate }) {
 
       {/* Mobile horizontal category pills */}
       <div className="doc-cats-mobile">
-        {CATS.map(c => (
+        {allCats.map(c => (
           <button key={c.id} className={`doc-cat-pill${cat === c.id ? ' active' : ''}`} onClick={() => setCat(c.id)}>
             <span>{c.icon}</span> {c.label.replace('Documents','Docs').replace('Policies','').replace('& Tax','').replace('& Legal','').replace('& Medical','').replace('& Home','').trim()}
             {catCounts[c.id] > 0 && <span className="doc-cat-pill-count">{catCounts[c.id]}</span>}
           </button>
         ))}
+        <button className="doc-cat-pill" onClick={() => setShowAddCat(true)} style={{ color: 'var(--accent)', fontWeight: 600 }}>
+          <span>+</span> Add Category
+        </button>
       </div>
 
       <div className="docs-layout" style={{ display: 'grid', gridTemplateColumns: '240px 1fr', gap: 16 }}>
@@ -463,13 +496,30 @@ export default function DocumentsPage({ navigate }) {
         <div className="card docs-sidebar-desktop" style={{ padding: 12, alignSelf: 'start' }}>
           <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.07em', color: 'var(--txt3)', padding: '8px 14px 10px' }}>Categories</div>
           <div className="doc-categories">
-            {CATS.map(c => (
-              <button key={c.id} className={`doc-cat-item${cat === c.id ? ' active' : ''}`} onClick={() => setCat(c.id)}>
+            {allCats.map(c => (
+              <div key={c.id} className={`doc-cat-item${cat === c.id ? ' active' : ''}`} onClick={() => setCat(c.id)} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 0, position: 'relative' }}>
                 <span className="doc-cat-icon">{c.icon}</span>
                 <span className="doc-cat-label">{c.label}</span>
                 <span className="doc-cat-count">{catCounts[c.id] || 0}</span>
-              </button>
+                {c.custom && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); deleteCustomCategory(c.id); }}
+                    style={{ position: 'absolute', right: 4, background: 'none', border: 'none', cursor: 'pointer', opacity: 0.5, padding: 2, display: 'flex' }}
+                    title="Delete category"
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
+                  </button>
+                )}
+              </div>
             ))}
+            <button
+              onClick={() => setShowAddCat(true)}
+              className="doc-cat-item"
+              style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left', color: 'var(--accent)', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 8, marginTop: 4, borderTop: '1px solid var(--border)' }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 5v14M5 12h14"/></svg>
+              <span>Add Category</span>
+            </button>
           </div>
         </div>
 
@@ -800,7 +850,7 @@ export default function DocumentsPage({ navigate }) {
             <div>
               <div className="section-label" style={{ marginBottom: 10 }}>Select Category</div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                {CATS.filter(c => c.id !== 'all' && c.id !== 'certificates').map(c => (
+                {allCats.filter(c => c.id !== 'all' && c.id !== 'certificates').map(c => (
                   <button key={c.id} className={`btn ${uploadForm.category === c.id ? 'btn-teal' : 'btn-outline'}`} onClick={() => setUploadForm(f => ({ ...f, category: c.id }))}>
                     <span>{c.icon}</span> {c.label.split(' ')[0]}
                   </button>
@@ -1115,6 +1165,42 @@ export default function DocumentsPage({ navigate }) {
             </div>
           )}
         </div>
+      )}
+
+      {showAddCat && (
+        <Modal title="Add New Category" onClose={() => setShowAddCat(false)} footer={
+          <>
+            <button className="btn btn-outline" onClick={() => setShowAddCat(false)}>Cancel</button>
+            <button className="btn btn-teal" onClick={addCustomCategory} disabled={!newCatLabel.trim()}>Add Category</button>
+          </>
+        }>
+          <div className="form-group">
+            <label className="form-label">Category Name</label>
+            <input
+              className="form-input"
+              value={newCatLabel}
+              onChange={(e) => setNewCatLabel(e.target.value)}
+              placeholder="e.g., Vehicle Documents, Kids School"
+              autoFocus
+              maxLength={40}
+            />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Icon (emoji)</label>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
+              {['📂', '🚗', '🏥', '🎓', '💼', '🎵', '✈️', '🐕', '📱', '💳', '🏠', '🎯'].map(emoji => (
+                <button
+                  key={emoji}
+                  onClick={() => setNewCatIcon(emoji)}
+                  style={{ width: 40, height: 40, fontSize: 18, border: newCatIcon === emoji ? '2px solid var(--accent)' : '1px solid var(--border)', borderRadius: 8, background: newCatIcon === emoji ? 'var(--accent-light)' : 'var(--surface)', cursor: 'pointer' }}
+                >{emoji}</button>
+              ))}
+            </div>
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--txt4)', padding: '8px 12px', background: 'var(--surface2)', borderRadius: 8 }}>
+            💡 Custom categories are saved locally. You can assign documents to them when uploading or editing.
+          </div>
+        </Modal>
       )}
     </div>
   );

@@ -32,7 +32,7 @@ router.get('/', auth, (req, res) => {
       params.push(req.user.id);
     }
 
-    if (category && category !== 'all' && VALID_CATEGORIES.includes(category)) {
+    if (category && category !== 'all' && (VALID_CATEGORIES.includes(category) || category.startsWith('custom_'))) {
       query += ` AND d.category = ?`;
       params.push(category);
     }
@@ -357,7 +357,8 @@ router.post('/upload', auth, upload.single('file'), async (req, res) => {
     if (!file) return res.status(400).json({ error: 'No file uploaded' });
 
     // Validate / auto-detect category from filename when possible
-    let validCategory = VALID_CATEGORIES.includes(category) ? category : 'other';
+    // Allow default categories OR custom categories (prefix: custom_)
+    let validCategory = (VALID_CATEGORIES.includes(category) || (category && category.startsWith('custom_'))) ? category : 'other';
     const lowerName = file.originalname.toLowerCase();
     if (validCategory === 'other') {
       if (lowerName.includes('passport') || lowerName.includes('license') || lowerName.includes('dl ') || lowerName.includes('birth_cert') || lowerName.includes('birth certificate')) {
