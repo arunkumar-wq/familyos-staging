@@ -29,8 +29,13 @@ export default function DashboardPage({ navigate }) {
   const [portfolio, setPortfolio] = useState(null);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState('1y');
+  const [docScores, setDocScores] = useState(null);
   const lineRef = useRef(); const lineChart = useRef();
   const donutRef = useRef(); const donutChart = useRef();
+
+  useEffect(() => {
+    api.get('/documents/scores').then(r => setDocScores(r.data)).catch(() => {});
+  }, []);
 
   useEffect(() => {
     Promise.all([
@@ -187,7 +192,11 @@ export default function DashboardPage({ navigate }) {
         {[
           { label: 'Total Net Worth', value: loading ? '...' : fmtK(nw), badge: '+5.3%', badgeColor: 'green', sub: '\u2191 $142K vs last quarter', subClass: 'up', accent: '#0a9e9e', onClick: () => navigate('portfolio'),
             icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0a9e9e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg> },
-          { label: 'Documents', value: loading ? '...' : (stats.docsCount || 0), badge: `${stats.expiringCount || 0} expiring`, badgeColor: 'amber', sub: 'Across 12 categories', accent: '#3883f6', onClick: () => navigate('documents'),
+          { label: 'Documents', value: loading ? '...' : (stats.docsCount || 0),
+            badge: docScores ? `Score ${docScores.overallScore}%` : `${stats.expiringCount || 0} expiring`,
+            badgeColor: docScores ? (docScores.overallScore >= 80 ? 'green' : docScores.overallScore >= 60 ? 'amber' : 'red') : 'amber',
+            sub: docScores ? `${stats.expiringCount || 0} expiring · ${docScores.summary?.totalMissing || 0} missing` : 'Across 12 categories',
+            accent: '#3883f6', onClick: () => navigate('documents'),
             icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3883f6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8m8 4H8"/></svg> },
           { label: 'Family Members', value: loading ? '...' : (stats.membersCount || 0), badge: 'Active', badgeColor: 'green', sub: 'All access verified', accent: '#7c3aed', onClick: () => navigate('family'),
             icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg> },
